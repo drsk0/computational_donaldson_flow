@@ -1,0 +1,4 @@
+.direnv/*
+.devenv*
+devenv.local.nix
+2d_solutions/*

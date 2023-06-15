@@ -5,7 +5,7 @@
   env.GREET = "devenv";
 
   # https://devenv.sh/packages/
-  packages = [ pkgs.git pkgs.ffmpeg pkgs.google-cloud-sdk-gce];
+  packages = [ pkgs.git pkgs.ffmpeg];
 
   enterShell = ''
     hello

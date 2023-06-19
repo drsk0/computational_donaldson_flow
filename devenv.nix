@@ -1,11 +1,11 @@
-{ pkgs, ... }:
+{ pkgs, config, lib, ... }:
 
 {
   # https://devenv.sh/basics/
   env.GREET = "devenv";
 
   # https://devenv.sh/packages/
-  packages = [ pkgs.git pkgs.ffmpeg];
+  packages = [ pkgs.git pkgs.ffmpeg pkgs.tmux] ++ lib.optionals (!config.container.isBuilding) [pkgs.docker pkgs.tectonic pkgs.texlab];
 
   enterShell = ''
     hello

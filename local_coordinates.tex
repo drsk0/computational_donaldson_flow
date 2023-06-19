@@ -1,0 +1,450 @@
+\documentclass[a4paper]{article}
+
+\usepackage{amsthm,amsfonts,amsmath,amscd,amssymb,latexsym}
+\usepackage{mathrsfs}
+\usepackage{hyperref}
+
+\newtheorem{PARA}{}[section]
+\newtheorem{definition}[PARA]{Definition}
+\newtheorem{theorem}[PARA]{Theorem}
+\newtheorem{lemma}[PARA]{Lemma}
+
+
+\newcommand{\B}{{\mathbb B}}
+\newcommand{\C}{{\mathbb C}}
+\newcommand{\D}{{\mathbb D}}
+\newcommand{\F}{{\mathbb F}}
+\renewcommand{\H}{{\mathbb H}}
+\newcommand{\N}{{\mathbb N}}
+\newcommand{\Q}{{\mathbb Q}}
+\newcommand{\R}{{\mathbb R}}
+\renewcommand{\S}{{\mathbb S}}
+\newcommand{\T}{{\mathbb T}}
+\newcommand{\Z}{{\mathbb Z}}
+%
+\newcommand{\cA}{{\mathcal A}} 
+\newcommand{\cB}{{\mathcal B}}
+\newcommand{\cC}{{\mathcal C}} 
+\newcommand{\cD}{{\mathcal D}}
+\newcommand{\cE}{{\mathcal E}}
+\newcommand{\cF}{{\mathcal F}}
+\newcommand{\cG}{{\mathcal G}} 
+\newcommand{\cH}{{\mathcal H}}
+\newcommand{\cI}{{\mathcal I}}
+\newcommand{\cJ}{{\mathcal J}}
+\newcommand{\cK}{{\mathcal K}}
+\newcommand{\cL}{{\mathcal L}} 
+\newcommand{\cM}{{\mathcal M}} 
+\newcommand{\cN}{{\mathcal N}}
+\newcommand{\cO}{{\mathcal O}}
+\newcommand{\cP}{{\mathcal P}}
+\newcommand{\cQ}{{\mathcal Q}}
+\newcommand{\cR}{{\mathcal R}}
+\newcommand{\cS}{{\mathcal S}}
+\newcommand{\cT}{{\mathcal T}}
+\newcommand{\cU}{{\mathcal U}}
+\newcommand{\cV}{{\mathcal V}}
+\newcommand{\cW}{{\mathcal W}}
+\newcommand{\cX}{{\mathcal X}}
+\newcommand{\cY}{{\mathcal Y}}
+\newcommand{\cZ}{{\mathcal Z}}
+%
+\newcommand{\sA}{\mathscr{A}}    
+\newcommand{\sB}{\mathscr{B}}    
+\newcommand{\sC}{\mathscr{C}}    
+\newcommand{\sD}{\mathscr{D}}    
+\newcommand{\sE}{\mathscr{E}}    
+\newcommand{\sF}{\mathscr{F}}    
+\newcommand{\sG}{\mathscr{G}}    
+\newcommand{\sH}{\mathscr{H}}    
+\newcommand{\sI}{\mathscr{I}}    
+\newcommand{\sJ}{\mathscr{J}}    
+\newcommand{\sK}{\mathscr{K}}    
+\newcommand{\sL}{\mathscr{L}}    
+\newcommand{\sM}{\mathscr{M}}    
+\newcommand{\sN}{\mathscr{N}}    
+\newcommand{\sO}{\mathscr{O}}    
+\newcommand{\sP}{\mathscr{P}}    
+\newcommand{\sQ}{\mathscr{Q}}    
+\newcommand{\sR}{\mathscr{R}}    
+\newcommand{\sS}{\mathscr{S}}    
+\newcommand{\sT}{\mathscr{T}}    
+\newcommand{\sU}{\mathscr{U}}    
+\newcommand{\sV}{\mathscr{V}}    
+\newcommand{\sW}{\mathscr{W}}    
+\newcommand{\sX}{\mathscr{X}}    
+\newcommand{\sY}{\mathscr{Y}}    
+\newcommand{\sZ}{\mathscr{Z}} 
+%
+\newcommand{\Om}{{\Omega}}
+\newcommand{\om}{{\omega}}
+\newcommand{\eps}{{\varepsilon}}
+\renewcommand{\phi}{{\varphi}}
+\newcommand{\ups}{{\upsilon}}
+\newcommand{\ga}{{\gamma}}
+\newcommand{\de}{{\delta}}
+\newcommand{\De}{{\Delta}}
+\newcommand{\La}{{\Lambda}}
+\newcommand{\be}{{\beta}}
+\newcommand{\al}{{\alpha}}
+\newcommand{\la}{{\lambda}}
+\newcommand{\Ga}{{\Gamma}}
+%
+\newcommand{\fhat}{{\widehat{f}}}
+\newcommand{\uhat}{{\widehat{u}}}
+\newcommand{\xhat}{{\widehat{x}}}
+\newcommand{\Hhat}{{\widehat{H}}}
+\newcommand{\Khat}{{\widehat{K}}}
+\newcommand{\rhohat}{{\widehat{\rho}}}
+\newcommand{\lahat}{{\widehat{\lambda}}}
+\newcommand{\Thetahat}{{\widehat{\Theta}}}
+%
+\newcommand{\tSi}{{\widetilde{\Sigma}}}
+\newcommand{\talpha}{{\widetilde{\alpha}}}
+\newcommand{\tbeta}{{\widetilde{\beta}}}
+\newcommand{\tga}{{\widetilde{\gamma}}}
+\newcommand{\tmu}{{\widetilde{\mu}}}
+\newcommand{\tnu}{{\widetilde{\nu}}}
+\newcommand{\tom}{{\widetilde{\om}}}
+\newcommand{\tLa}{{\widetilde{\Lambda}}}
+\newcommand{\tA}{{\widetilde{A}}}
+\newcommand{\tB}{{\widetilde{B}}}
+\newcommand{\tF}{{\widetilde{F}}}
+\newcommand{\tJ}{{\widetilde{J}}}
+\newcommand{\tP}{{\widetilde{P}}}
+\newcommand{\tU}{{\widetilde{U}}}
+\newcommand{\tf}{{\widetilde{f}}}
+\newcommand{\tg}{{\widetilde{g}}}
+\renewcommand{\th}{{\widetilde{h}}}
+\newcommand{\tu}{{\widetilde{u}}}
+\newcommand{\tv}{{\widetilde{v}}}
+\newcommand{\tw}{{\widetilde{w}}}
+\newcommand{\tx}{{\widetilde{x}}}
+\newcommand{\ty}{{\widetilde{y}}}
+\newcommand{\tz}{{\widetilde{z}}}
+\newcommand{\tcF}{{\widetilde{\mathcal{F}}}}
+%
+\newcommand{\coker}{{\mathrm{coker}}}   
+\newcommand{\im}{{\mathrm{im}}} 
+\newcommand{\range}{{\mathrm{range}}}   
+\newcommand{\SPAN}{{\mathrm{span}}}   
+\newcommand{\dom}{{\mathrm{dom}}}   
+\newcommand{\Graph}{{\mathrm{graph}}} 
+\newcommand{\DIV}{{\mathrm{div}}}   
+\newcommand{\trace}{{\mathrm{trace}}} 
+\newcommand{\sign}{{\mathrm{sign}}} 
+\newcommand{\id}{{\mathrm{id}}} 
+\newcommand{\Id}{{\mathrm{Id}}}
+\newcommand{\rank}{{\mathrm{rank}}} 
+\newcommand{\codim}{{\mathrm{codim}}}  
+\newcommand{\diag}{{\mathrm{diag}}}  
+\newcommand{\cl}{{\mathrm{cl}}} 
+\newcommand{\dist}{{\mathrm{dist}}}  
+\newcommand{\INT}{{\mathrm{int}}}  
+\newcommand{\Vol}{{\mathrm{Vol}}}  
+\newcommand{\supp}{{\mathrm{supp}}}  
+\newcommand{\modulo}{{\mathrm{mod}}} 
+\newcommand{\standard}{{\mathrm{std}}} 
+\newcommand{\ndg}{{\mathrm{ndg}}} 
+\newcommand{\INDEX}{{\mathrm{index}}}  
+\newcommand{\IND}{{\mathrm{ind}}}  
+\newcommand{\ind}{{\mathrm{Ind}}}
+\newcommand{\grad}{{\mathrm{grad}}}  
+\newcommand{\IM}{{\mathrm{Im}}} 
+\newcommand{\RE}{{\mathrm{Re}}}  
+\renewcommand{\Re}{{\mathrm{Re}}}  
+\renewcommand{\Im}{{\mathrm{Im}}}  
+%
+\newcommand{\Lie}{{\mathrm{Lie}}} 
+\newcommand{\Aut}{{\mathrm{Aut}}}   
+\newcommand{\Out}{{\mathrm{Out}}} 
+\newcommand{\Diff}{{\mathrm{Diff}}} 
+\newcommand{\Vect}{{\mathrm{Vect}}}  
+\newcommand{\Symp}{{\mathrm{Symp}}}   
+\newcommand{\Ham}{{\mathrm{Ham}}}  
+\newcommand{\Per}{{\mathrm{Per}}} 
+\newcommand{\Rat}{{\mathrm{Rat}}}  
+\newcommand{\Flux}{{\mathrm{Flux}}}  
+\newcommand{\Map}{{\mathrm{Map}}}  
+\newcommand{\Or}{{\mathrm{Or}}}  
+\newcommand{\Res}{{\mathrm{Res}}}   
+\newcommand{\Fix}{{\mathrm{Fix}}}  
+\newcommand{\Crit}{{\mathrm{Crit}}}  
+\newcommand{\Hom}{{\mathrm{Hom}}}   
+\newcommand{\End}{{\mathrm{End}}}  
+\newcommand{\Tor}{{\mathrm{Tor}}} 
+\newcommand{\MOR}{{\mathrm{Mor}}}  
+\newcommand{\OB}{{\mathrm{Ob}}}  
+%
+\newcommand{\VERT}{{\rm Vert}}   
+\newcommand{\Hor}{{\rm Hor}}  
+%
+\newcommand{\cHZ}{{\mathrm{c}_{\mathrm{HZ}}}}  
+\newcommand{\CZ}{{\mathrm{CZ}}}  
+\newcommand{\FS}{{\mathrm{FS}}}
+\newcommand{\w}{{\mathrm{w}}}
+%%
+\renewcommand{\i}{{\mathbf{i}}}
+\renewcommand{\j}{{\mathbf{j}}}
+\renewcommand{\k}{{\mathbf{k}}}
+%
+\newcommand{\ad}{{\rm ad}}
+\newcommand{\Ad}{{\rm Ad}}
+\newcommand{\point}{{\rm pt}}
+\newcommand{\ev}{{\rm ev}}
+\newcommand{\ex}{{\rm ex}}
+\newcommand{\odd}{{\rm odd}}
+\newcommand{\can}{{\rm can}}
+\newcommand{\eff}{{\rm eff}}
+\newcommand{\sym}{{\rm sym}}
+\newcommand{\norm}{{\rm norm}}
+\newcommand{\torsion}{{\rm torsion}}
+\newcommand{\NORM}{{\rm norm}}
+\newcommand{\MAX}{{\rm max}}
+\newcommand{\dvol}{{\rm dvol}}
+\newcommand{\loc}{{\rm loc}}
+\newcommand{\const}{{\rm const}}
+\newcommand{\hor}{{\mathrm{hor}}}
+\newcommand{\symp}{{\mathrm{symp}}}
+%
+\newcommand{\comb}{{\mathrm{comb}}}
+\newcommand{\Floer}{{\mathrm{Floer}}}
+%
+\newcommand{\G}{{\mathrm{G}}} 
+\newcommand{\GL}{{\mathrm{GL}}} 
+\renewcommand{\O}{{\mathrm{O}}} 
+\newcommand{\SO}{{\mathrm{SO}}} 
+\newcommand{\U}{{\mathrm{U}}} 
+\newcommand{\SU}{{\mathrm{SU}}} 
+\newcommand{\PU}{{\mathrm{PU}}} 
+\newcommand{\SL}{{\mathrm{SL}}} 
+\newcommand{\ASL}{{\mathrm{ASL}}} 
+\newcommand{\PSL}{{\mathrm{PSL}}} 
+\newcommand{\Sp}{{\mathrm{Sp}}} 
+\newcommand{\fgl}{{\mathfrak{gl}}} 
+\newcommand{\fo}{{\mathfrak{o}}} 
+\newcommand{\fso}{{\mathfrak{so}}} 
+\newcommand{\fu}{{\mathfrak{u}}} 
+\newcommand{\fsu}{{\mathfrak{su}}} 
+\newcommand{\fsl}{{\mathfrak{sl}}} 
+\newcommand{\fsp}{{\mathfrak{sp}}} 
+\newcommand{\fg}{{\mathfrak{g}}} 
+%
+\newcommand{\Cinf}{C^{\infty}}
+\newcommand{\CP}{{\C\mathrm{P}}}
+\newcommand{\CS}{{\mathcal{CS}}}
+\newcommand{\CF}{{\mathrm{CF}}}
+\newcommand{\HF}{{\mathrm{HF}}}
+\newcommand{\BC}{{\mathrm{BC}}}
+\newcommand{\YM}{{\cal{YM}}}
+\newcommand{\Areg}{{\cal A}_{\rm reg}}
+\newcommand{\Sreg}{{\cal S}_{\rm reg}}
+\newcommand{\Jreg}{{\cal J}_{\rm reg}}
+\newcommand{\JregK}{{\cal J}_{\rm reg,K}}
+\newcommand{\Hreg}{{\cal H}_{\rm reg}}
+\newcommand{\HJreg}{{\cal H}{\cal J}_{\rm reg}}
+\newcommand{\XJreg}{{\cal X}{\cal J}_{\rm reg}}
+\newcommand{\SP}{{\mathrm{SP}}}
+\newcommand{\PD}{{\mathrm{PD}}}
+\newcommand{\DR}{{\mathrm{DR}}}
+\newcommand{\RP}{{\mathbb{R}\mathrm{P}}}
+\newcommand{\excess}{{\mathrm{excess}}}
+%
+\newcommand{\inner}[2]{\langle #1, #2\rangle}
+\newcommand{\INNER}[2]{\left\langle #1, #2\right\rangle}
+\newcommand{\Inner}[2]{#1\cdot#2}
+\newcommand{\winner}[2]{\langle #1{\wedge}#2\rangle}
+%
+\def\NABLA#1{{\mathop{\nabla\kern-.5ex\lower1ex\hbox{$#1$}}}}
+\def\Nabla#1{\nabla\kern-.5ex{}_{#1}}
+%
+\def\abs#1{\mathopen|#1\mathclose|}
+\def\Abs#1{\left|#1\right|}
+\def\norm#1{\mathopen\|#1\mathclose\|}
+\def\Norm#1{\left\|#1\right\|}
+%
+\renewcommand{\Tilde}{\widetilde}
+\newcommand{\p}{{\partial}}
+\newcommand{\notsub}{\not\subset}
+\newcommand{\iI}{{I}}  
+\newcommand{\bI}{{\partial I}} 
+\newcommand{\multidots}{\makebox[2cm]{\dotfill}}
+%
+\newcommand{\IMP}{\Longrightarrow}
+\newcommand{\IFF}{\Longleftrightarrow}
+\newcommand{\INTO}{\hookrightarrow}
+\newcommand{\TO}{\longrightarrow}
+\newcommand{\longhookrightarrow}{\ensuremath{\lhook\joinrel\relbar\joinrel\rightarrow}}
+\newcommand{\notimplies}{{\hspace{7pt}\not\hspace{-7pt}\implies}}
+\newcommand{\qimplies}{{\hspace{18pt}?\hspace{-18pt}\implies}}
+
+\title{Local coordinate expressions for the Donaldson geometric flow}
+\author{Robin~S.~Krom}
+
+\date{June 5, 2023}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This document contains the Donaldson geometric flow equations on the 4--dimensional torus expressed in local coordinates.
+\end{abstract}
+
+\section{Introduction}
+The Donaldson geometric flow on the space of symplectic structures in a fixed
+cohomology class $\sS_a$ is given by the evolution equation
+\begin{equation}\label{eq:flow}
+\p_t \rho = d*^\rho d\Theta^\rho, 
+\end{equation}
+where
+\begin{gather*}
+\Theta := *\frac{\rho}{u} -\frac{1}{2}\Abs{\frac{\rho}{u}}^2\rho, \qquad u:= \frac{\rho\wedge\rho}{2\dvol}.
+\end{gather*}
+If $M$ is a hyperK\"ahler surface, there exists symplectic forms $\om_1, \om_2, \om_3$ and complex structures $J_1, J_2, J_3$ such that each $J_i$ is compatible with $\om_i$ and the resulting metric
+$$
+\left<\cdot, \cdot \right> := \om_i(\cdot, J_i\cdot)
+$$ 
+is independent of $i$. In addition the complex structures satisfy the quaternion
+relations $J_iJ_j = -J_jJ_i = J_k$ for every cyclic permuation $i,j,k$ of
+$1,2,3$. In this case, the evolution equation becomes
+$$
+\p_t \rho = -d\sum_i dK_i^{\rho_t} \circ J_i^{\rho_t}, \qquad K_i^{\rho_t} := \frac{\om_i \wedge \rho_t}{\dvol_{\rho_t}}, \qquad \rho_t(J_i^{\rho_t}\cdot, \cdot) := \rho_t(\cdot, J_i\cdot).
+$$
+Now assume $M$ is the four-torus with the standard symplectic structures $\om_1, \om_2, \om_3$ and complex structures $J_1, J_2, J_3$. Let $x_0, x_1, x_2, x_4$ be the standard euclidian coordinates. Then, $dx_a \wedge dx_b$ for $a<b$ form an orthonormal basis for the two-forms $\Lambda^2(\R^4)$ and
+$$
+\rho = \sum_{a < b} \rho_{ab} dx_a \wedge dx_b.
+$$
+The evolution equation expressed in these local coordinates is given by
+$$
+\p_t \rho_{ab} = - \p_a\sum_i  \sum_c(A J_i A^{-1})_b^c \p_cK_i^\rho,
+$$
+where
+\begin{gather*}
+K_i^\rho := \frac{2(\rho_{0i} + \rho_{jk})}{u}, \quad i,j,k = 1,2,3\text{ cyclic}\\
+u := \rho_{01}\rho_{23} + \rho_{02}\rho_{31} + \rho_{03}\rho_{12}\\
+A:= \left[
+\begin{array}{cccc}
+0 & \rho_{0 1} & \rho_{0 2} & \rho_{0 3} \\
+ - \rho_{0 1} & 0 & \rho_{1 2} &  - \rho_{3 1} \\
+ - \rho_{0 2} &  - \rho_{1 2} & 0 & \rho_{2 3} \\
+ - \rho_{0 3} & \rho_{3 1} &  - \rho_{2 3} & 0 \\
+\end{array}
+\right]\\
+J_1 := \left[
+\begin{array}{cccc}
+0 & -1 & 0 & 0 \\
+1 & 0 & 0 & 0 \\
+0 & 0 & 0 & -1 \\
+0 & 0 & 1 & 0 \\
+\end{array}
+\right], 
+J_2 := \left[
+\begin{array}{cccc}
+0 & 0 & -1 & 0 \\
+0 & 0 & 0 & 1 \\
+1 & 0 & 0 & 0 \\
+0 & -1 & 0 & 0 \\
+\end{array}
+\right],
+J_3 := \left[
+\begin{array}{cccc}
+0 & 0 & 0 & -1 \\
+0 & 0 & -1 & 0 \\
+0 & 1 & 0 & 0 \\
+1 & 0 & 0 & 0 \\
+\end{array}
+\right].
+\end{gather*}
+An alternative notation is
+\begin{equation*}
+\p_t \left[
+\begin{array}{c}
+\rho_{0 1} \\
+\rho_{0 2} \\
+\rho_{0 3} \\
+\rho_{1 2} \\
+\rho_{1 3} \\
+\rho_{2 3} \\ 
+\end{array}
+\right] = - 
+\left[\begin{array}{c}
+\p_0 \\
+\p_1 \\
+\p_2 \\
+\p_3
+\end{array}
+\right] \times \left(
+\sum_i A \cdot J_i \cdot A^{-1} \cdot
+\left[\begin{array}{c}
+\p_0 K_i^\rho \\
+\p_1 K_i^\rho \\
+\p_2 K_i^\rho \\
+\p_3 K_i^\rho
+\end{array}
+\right]\right).
+\end{equation*}
+The initial condition of the Donaldson flow is a symplectic structure $\rho_0$
+in a fixed cohomology class. A symplectic structure is a 2-form $\rho$ that is
+non-degenerate and closed, i.e.
+$$
+\rho\wedge \rho > 0, \qquad d\rho = 0.
+$$
+In local coordinates these two constraints read
+$$
+u > 0, \qquad \sum_{a < b < c} \partial_a \rho_{bc} = 0.
+$$
+Two symplectic forms have the same cohomology class, if and only if their total volume of the torus coincides.
+$$
+[\rho_1] = [\rho_2] = a \in \cH^2(M, \R) \Leftrightarrow \int_M \rho_1\wedge\rho_1 = \int_M \rho_2 \wedge \rho_2 = a^2(M). 
+$$
+Hence, given a symplectic structure $\rho_{ab}$ in local coordinates, we can compute
+$$
+\int_M u \dvol
+$$
+to obtain its cohomology class.
+
+There is a two-dimensional analog to the Donaldson flow on closed surfaces. A detailed description of this flow and its connection to the Donaldson flow is given in \cite{SAL}. It is an evolution equation on the space of strictly positive functions given by
+$$
+\p_t u = d^*d \frac{1}{u}.
+$$
+Suppose the surface is the two-dimensional torus, then in the standard local coordinate system
+$$
+\p_t u = -\sum_a \p_a^2 \frac{1}{u}
+$$
+It can be shown with the help of a maximum-principle that, for a suitable
+initial condition, a unique solution exists for all time and it converges to a
+constant function.
+
+\begin{thebibliography}{99}
+\bibliographystyle{alpha}
+\scriptsize
+\vspace{-7pt}
+
+\bibitem{DON1}
+S.K.~Donaldson, 
+Moment Maps and Diffeomorphisms.
+{\it Asian J.\ Math.} {\bf 3} (1999), 1--16. \\
+\url{http://bogomolov-lab.ru/G-sem/AJM-3-1-001-016.pdf}
+
+\vspace{-7pt}
+
+\bibitem{SAL}
+D.A.~Salamon, Uniqueness of symplectic structures.
+{\it Acta Mathematica Vietnamica} {\bf 38} (2013), 123--144. 
+\url{http://www.math.ethz.ch/~salamon/PREPRINTS/unique.pdf}
+
+\vspace{-7pt}
+
+\bibitem{KROMSAL}
+R.S.~Krom, D.A.~Salamon, The Donaldson geometric flow for symplectic
+four-manifolds.
+{\it Journal of Symplectic Geometry {\bf 17} (2019), 381--417}
+
+\vspace{-7pt}
+
+\bibitem{KROM}
+R.S.~Krom, Regularity of the Donaldson Geometric Flow. {\it Acta Math Vietnam} {\bf 47},
+611–633 (2022). \url{https://doi.org/10.1007/s40306-021-00454-x}
+\end{thebibliography}
+\end{document}

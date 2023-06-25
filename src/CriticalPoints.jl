@@ -186,8 +186,8 @@ eqs = vcat(
     eqNonDegenerate,
     eqCritPoint,
 # TODO: energy and cohomology conditions could also be part of the boundary conditions.
-    eqEnergy,
-    eqCohomology,
+    # eqEnergy,
+    # eqCohomology,
 )
 
 # periodic boundary conditions for the 4-torus
@@ -240,4 +240,4 @@ callback = function (p, l)
 end
 
 
-run() = Optimization.solve(prob, BFGS(); callback=callback, maxiters=1)
+run(maxiters::Int = 1) = Optimization.solve(prob, BFGS(); callback=callback, maxiters=maxiters)

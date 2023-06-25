@@ -5,7 +5,7 @@
   # env.GREET = "devenv";
 
   # https://devenv.sh/packages/
-  packages = [pkgs.ffmpeg]; 
+  packages = [pkgs.ffmpeg pkgs.nvtop pkgs.bottom]; 
     # ++ [pkgs.helix]
     # ++ [pkgs.tectonic pkgs.texlab];
 

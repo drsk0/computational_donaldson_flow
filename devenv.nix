@@ -2,22 +2,22 @@
 
 {
   # https://devenv.sh/basics/
-  env.GREET = "devenv";
+  # env.GREET = "devenv";
 
   # https://devenv.sh/packages/
-  packages = [ pkgs.git pkgs.ffmpeg pkgs.tmux] ++ lib.optionals (!config.container.isBuilding) [pkgs.docker pkgs.tectonic pkgs.texlab];
+  packages = [pkgs.ffmpeg]; 
+    # ++ [pkgs.helix]
+    # ++ [pkgs.tectonic pkgs.texlab];
 
-  enterShell = ''
-    hello
-    git --version
-  '';
+
+  # enterShell = ''
+  #   hello
+  #   git --version
+  # '';
 
   # https://devenv.sh/languages/
   languages.nix.enable = true;
   languages.julia.enable = true;
-
-  # https://devenv.sh/scripts/
-  scripts.hello.exec = "echo hello from $GREET";
 
   scripts.patch-gksqt.exec = 
       let
@@ -33,7 +33,7 @@
   '';
 
   # https://devenv.sh/pre-commit-hooks/
-  pre-commit.hooks.shellcheck.enable = true;
+  # pre-commit.hooks.shellcheck.enable = true;
 
   # https://devenv.sh/processes/
   # processes.ping.exec = "ping example.com";

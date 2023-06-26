@@ -176,18 +176,12 @@ eqEnergy = [
     E ≳ 2 * volM + 1
 ]
 
-# equations for cohomological constraint [ρ] = a ∈ H².
-eqCohomology = [
-    aM ~ 2 * volM
-]
-
 eqs = vcat(
     eqClosed,
     eqNonDegenerate,
     eqCritPoint,
 # TODO: energy and cohomology conditions could also be part of the boundary conditions.
     # eqEnergy,
-    # eqCohomology,
 )
 
 # periodic boundary conditions for the 4-torus

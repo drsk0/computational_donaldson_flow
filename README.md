@@ -31,3 +31,9 @@ https://github.com/drsk0/computational_donaldson_flow/assets/827698/f118badd-c95
 
 https://github.com/drsk0/computational_donaldson_flow/assets/827698/8b34ccda-77aa-4a17-94b5-2de298c721ae
 
+https://github.com/drsk0/computational_donaldson_flow/assets/827698/bd956db9-2dfb-438e-9436-090c48eb38fc
+
+A few insights:
+  - The maximum principle can be clearly seen at work.
+  - Due to the inversion $\frac{1}{u}$ the convergence is much faster where $u$ is small, and can become extremely slow when $u$ is big.
+  - Hence, the flow favours points where $u$ is big, while points where $u$ is small quickly make $u$ grow.

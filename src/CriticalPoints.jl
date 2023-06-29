@@ -1,5 +1,6 @@
 using NeuralPDE: DomainSets
-using NeuralPDE, Lux, Optimization, OptimizationOptimJL
+using NeuralPDE, Lux, Optimization, OptimizationOptimJL, Integrals
+using LinearAlgebra
 import ModelingToolkit: Interval
 
 @parameters x0 x1 x2 x3
@@ -83,103 +84,75 @@ J = [
     J₃,
 ]
 
-ρ(x0,x1,x2,x3) = [
-    #(0,1)
-    ρ01(x0,x1,x2,x3),
-    #(0,2)
-    ρ02(x0,x1,x2,x3),
-    #(0,3)
-    ρ03(x0,x1,x2,x3),
-    #(1,2)
-    ρ12(x0,x1,x2,x3),
-    #(1,3)
-    ρ13(x0,x1,x2,x3),
-    #(2,3)
-    ρ23(x0,x1,x2,x3),
-]
+u(ρ) = ρ[1] * ρ[6] - ρ[2] * ρ[5] + ρ[3] * ρ[4]
 
-u(x0, x1, x2, x3) = ρ01(x0, x1, x2, x3) * ρ23(x0, x1, x2, x3) - ρ02(x0, x1, x2, x3) * ρ13(x0, x1, x2, x3) + ρ03(x0, x1, x2, x3) * ρ12(x0, x1, x2, x3)
+K₁(ρ) = 2(ρ[1] + ρ[6]) / u(ρ)
+K₂(ρ) = 2(ρ[2] - ρ[5]) / u(ρ)
+K₃(ρ) = 2(ρ[3] + ρ[4]) / u(ρ)
 
-K₁(x0,x1,x2,x3) = 2(ρ01(x0, x1, x2, x3) + ρ23(x0, x1, x2, x3)) / u(x0, x1, x2, x3)
-K₂(x0,x1,x2,x3) = 2(ρ02(x0, x1, x2, x3) - ρ13(x0, x1, x2, x3)) / u(x0, x1, x2, x3)
-K₃(x0,x1,x2,x3) = 2(ρ03(x0, x1, x2, x3) + ρ12(x0, x1, x2, x3)) / u(x0, x1, x2, x3)
-
-K(x0, x1, x2, x3) = [
-    K₁(x0,x1,x2,x3),
-    K₂(x0,x1,x2,x3),
-    K₃(x0,x1,x2,x3),
+K(ρ) = [
+    K₁(ρ),
+    K₂(ρ),
+    K₃(ρ),
 ]
 
 # g(A⋅, ⋅) = ρ(⋅, ⋅)
-A(x0, x1, x2, x3) = [
-    0.0 ρ01(x0, x1, x2, x3) ρ02(x0, x1, x2, x3) ρ03(x0, x1, x2, x3);
-    -ρ01(x0, x1, x2, x3) 0.0 ρ12(x0, x1, x2, x3) ρ13(x0, x1, x2, x3);
-    -ρ02(x0, x1, x2, x3) -ρ12(x0, x1, x2, x3) 0.0 ρ23(x0, x1, x2, x3);
-    -ρ03(x0, x1, x2, x3) -ρ13(x0, x1, x2, x3) -ρ23(x0, x1, x2, x3) 0.0;
+A(ρ) = [
+    0.0 ρ[1] ρ[2] ρ[3];
+    -ρ[1] 0.0 ρ[4] ρ[5];
+    -ρ[2] -ρ[4] 0.0 ρ[6];
+    -ρ[3] -ρ[5] -ρ[6] 0.0;
 ]
 
 # integrate over the full torus with the standard volume element.
-∫_M = Integral((x0,x1,x2,x3) in DomainSets.ProductDomain(DomainSets.ClosedInterval(0,2π), 
-                                                            DomainSets.ClosedInterval(0,2π), 
-                                                            DomainSets.ClosedInterval(0,2π), 
-                                                            DomainSets.ClosedInterval(0,2π)))
+function ∫_M(f) 
+    IntegralProblem(f, zeros(4), 2π *ones(4))
+    sol = solve(prob, HCubatureJL(); reltol = 1e-3, abstol = 1e-3)
+    sol.u
+end
 
 # energy
-# TODO: What quadrature will this be using? Is this under my control?
-E = ∫_M((K(x0,x1,x2,x3)[1]^2 + K(x0,x1,x2,x3)[2]^2 + K(x0,x1,x2,x3)[3]^2)*u(x0,x1,x2,x3))
-
-# fundamental class a[M]
-# TODO: What quadrature will this be using? Is this under my control?
-aM = ∫_M(u(x0,x1,x2,x3))
+E(ρ) = ∫_M((K(ρ)[1]^2 + K(ρ)[2]^2 + K(ρ)[3]^2)*u(ρ))
 
 # The gradient vector field. At a cricitical point, this vanishes. In particular,
 # there is no need to take the exterior derivative to search for a critical point.
 #
 # TODO: Make sure we use the best algorithm for solve the linear problem AXᵢ = dKᵢ.
 # This is equivalent to ρ(Xᵢ, ⋅) = dKᵢ, is the Hamiltonian vector field of Kᵢ.
-ΣJᵢXᵢ(x0,x1,x2,x3) =
-    J₁ * A(x0, x1, x2, x3) \ d₀(K₁(x0,x1,x2,x3))
-    + J₂ * A(x0, x1, x2, x3) \ d₀(K₂(x0,x1,x2,x3))
-    + J₃ * A(x0, x1, x2, x3) \ d₀(K₃(x0,x1,x2,x3))
-
-# ∑ = sum
-# gradE1(x0, x1, x2, x3) = A(x0,x1,x2,x3) * ∑([J[i] * A(x0,x1,x2,x3) \ d₀(K(x0,x1,x2,x3)[i]) for i in [1,2,3]])
+function ΣJᵢXᵢ(ρ) 
+    B = A(ρ)
+    J₁ * B \ d₀(K₁(ρ)) + J₂ * B \ d₀(K₂(ρ)) + J₃ * B \ d₀(K₃(ρ))
+end
 
 # gradient operator
-gradE(x0,x1,x2,x3) = d₁(A(x0,x1,x2,x3)*ΣJᵢXᵢ(x0,x1,x2,x3))
+gradE(ρ) = d₁(A(ρ)*ΣJᵢXᵢ(ρ))
 
 
 # equations for dρ = 0.
-eqClosed = [
-    d₂(ρ(x0,x1,x2,x3))[1] ~ 0,
-    d₂(ρ(x0,x1,x2,x3))[2] ~ 0,
-    d₂(ρ(x0,x1,x2,x3))[3] ~ 0,
-    d₂(ρ(x0,x1,x2,x3))[4] ~ 0,
+eqClosed(ρ) = [
+    norm(d₂(ρ)) ~ 0
 ]
 
 # equations for u > 0.
 ϵ = 0.1
-eqNonDegenerate = [
-    u(x0,x1,x2,x3) ≳ ϵ,
+eqNonDegenerate(ρ) = [
+    u(ρ) ≳ ϵ,
 ]
 
 # equations for ΣJᵢXᵢ = 0.
-eqCritPoint = [
-    ΣJᵢXᵢ(x0,x1,x2,x3)[1] ~ 0,
-    ΣJᵢXᵢ(x0,x1,x2,x3)[2] ~ 0,
-    ΣJᵢXᵢ(x0,x1,x2,x3)[3] ~ 0,
-    ΣJᵢXᵢ(x0,x1,x2,x3)[4] ~ 0,
+eqCritPoint(ρ) = [
+    norm(ΣJᵢXᵢ(ρ)) ~ 0
 ]
 
 # equations for higher energy.
-eqEnergy = [
-    E ≳ 2 * volM + 1
+eqEnergy(ρ) = [
+    E(ρ) ≳ 2 * volM + 1
 ]
 
 eqs = vcat(
-    eqClosed,
-    eqNonDegenerate,
-    eqCritPoint,
+    eqClosed([ρ01(x0,x1,x2,x3),ρ02(x0,x1,x2,x3),ρ03(x0,x1,x2,x3),ρ12(x0,x1,x2,x3),ρ13(x0,x1,x2,x3),ρ23(x0,x1,x2,x3)]),
+    eqNonDegenerate([ρ01(x0,x1,x2,x3),ρ02(x0,x1,x2,x3),ρ03(x0,x1,x2,x3),ρ12(x0,x1,x2,x3),ρ13(x0,x1,x2,x3),ρ23(x0,x1,x2,x3)]),
+    eqCritPoint([ρ01(x0,x1,x2,x3),ρ02(x0,x1,x2,x3),ρ03(x0,x1,x2,x3),ρ12(x0,x1,x2,x3),ρ13(x0,x1,x2,x3),ρ23(x0,x1,x2,x3)]),
 # TODO: energy and cohomology conditions could also be part of the boundary conditions.
     # eqEnergy,
 )
@@ -217,7 +190,7 @@ input_ = length(domain)
 n = 15
 chain = [Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1)) for _ in 1:6]
 
-strategy = QuadratureTraining()
+strategy = QuasiRandomTraining(100^4)
 discretization = PhysicsInformedNN(chain, strategy)
 @named pdesystem = PDESystem(eqs, bcs, domain, [x0, x1, x2, x3], [ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)])
 prob = discretize(pdesystem, discretization)

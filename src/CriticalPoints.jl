@@ -1,5 +1,5 @@
 using NeuralPDE: DomainSets
-using NeuralPDE, Lux, Optimization, OptimizationOptimJL, Integrals
+using NeuralPDE, Lux, CUDA, Random, ComponentArrays, Optimization, OptimizationOptimisers, Integrals
 using LinearAlgebra
 import ModelingToolkit: Interval
 
@@ -188,10 +188,11 @@ bcs = [
 
 input_ = length(domain)
 n = 15
-chain = [Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1)) for _ in 1:6]
+chains = [Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1)) for _ in 1:6]
 
-strategy = QuasiRandomTraining(100^4)
-discretization = PhysicsInformedNN(chain, strategy)
+strategy = QuasiRandomTraining(10^4)
+ps = [Lux.setup(Random.default_rng(), c)[1] |> ComponentArray |> gpu .|> Float64 for c in chains]
+discretization = PhysicsInformedNN(chains, strategy, init_params = ps)
 @named pdesystem = PDESystem(eqs, bcs, domain, [x0, x1, x2, x3], [ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)])
 prob = discretize(pdesystem, discretization)
 sym_prob = symbolic_discretize(pdesystem, discretization)
@@ -207,4 +208,4 @@ callback = function (p, l)
 end
 
 
-run(maxiters::Int = 1) = Optimization.solve(prob, BFGS(); callback=callback, maxiters=maxiters)
+run(maxiters::Int = 1) = Optimization.solve(prob, Adam(0.01); callback=callback, maxiters=maxiters)

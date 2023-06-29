@@ -2,7 +2,7 @@
 
 julia_version = "1.9.0"
 manifest_format = "2.0"
-project_hash = "b6f2425b20a033fd6888783ce6a45c5f28479666"
+project_hash = "04f54b697209ef7957cd63c7ed072b19cb9cdd11"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e58c18d2312749847a74f5be80bb0fa53da102bd"
@@ -319,7 +319,9 @@ version = "1.0.2+0"
 
 [[deps.ComponentArrays]]
 deps = ["ArrayInterface", "ChainRulesCore", "ForwardDiff", "Functors", "LinearAlgebra", "Requires", "StaticArrayInterface"]
-git-tree-sha1 = "47960a253c1a759762504a8158d0afbfd7dccd61"
+git-tree-sha1 = "0685dbb50c35ce06b6ee75aac04232399f895e13"
+repo-rev = "main"
+repo-url = "https://github.com/jonniedie/ComponentArrays.jl"
 uuid = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
 version = "0.13.14"
 
@@ -1485,6 +1487,12 @@ deps = ["Optim", "Optimization", "Reexport", "SparseArrays"]
 git-tree-sha1 = "76a57a8484370bb26ae82a0a330abfff96d561aa"
 uuid = "36348300-93cb-4f02-beb5-3c3902f8871e"
 version = "0.1.9"
+
+[[deps.OptimizationOptimisers]]
+deps = ["Optimisers", "Optimization", "Printf", "ProgressLogging", "Reexport"]
+git-tree-sha1 = "3887930feadac706d0cfd91c680d56704de0b570"
+uuid = "42dfb2eb-d2b4-4451-abcd-913932933ac1"
+version = "0.1.4"
 
 [[deps.OrderedCollections]]
 git-tree-sha1 = "d321bf2de576bf25ec4d3e4360faca399afca282"

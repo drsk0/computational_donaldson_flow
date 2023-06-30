@@ -4,7 +4,7 @@ using LinearAlgebra
 import ModelingToolkit: Interval
 
 @parameters x0 x1 x2 x3
-@variables ρ01(..) ρ02(..) ρ03(..) ρ12(..) ρ13(..) ρ23(..)
+@variables ρ01(..) ρ02(..) ρ03(..) ρ12(..) ρ13(..) ρ23(..) K1(..) K2(..) K3(..)
 
 # the 4-torus
 domain = [
@@ -62,21 +62,21 @@ J₁ = [
     1 0 0 0;
     0 0 0 -1;
     00 0 1 0;
-]
+] .|> Float64
 
 J₂ = [
     0 0 -1 0;
     0 0 0 1;
     1 0 0 0;
     0 -1 0 0;
-]
+] .|> Float64
 
 J₃ = [
     0 0 0 -1;
     0 0 -1 0;
     0 1 0 0;
     1 0 0 0;
-]
+] .|> Float64
 
 J = [
     J₁,
@@ -119,10 +119,11 @@ E(ρ) = ∫_M((K(ρ)[1]^2 + K(ρ)[2]^2 + K(ρ)[3]^2)*u(ρ))
 #
 # TODO: Make sure we use the best algorithm for solve the linear problem AXᵢ = dKᵢ.
 # This is equivalent to ρ(Xᵢ, ⋅) = dKᵢ, is the Hamiltonian vector field of Kᵢ.
-function ΣJᵢXᵢ(ρ) 
+function ΣJᵢXᵢ(ρ, K) 
     B = A(ρ)
-    J₁ * B \ d₀(K₁(ρ)) + J₂ * B \ d₀(K₂(ρ)) + J₃ * B \ d₀(K₃(ρ))
+    J₁ * B \ d₀(K[1]) + J₂ * B \ d₀(K[2]) + J₃ * B \ d₀(K[3])
 end
+# @register_symbolic(ΣJᵢXᵢ(ρ, K))
 
 # gradient operator
 gradE(ρ) = d₁(A(ρ)*ΣJᵢXᵢ(ρ))
@@ -140,8 +141,11 @@ eqNonDegenerate(ρ) = [
 ]
 
 # equations for ΣJᵢXᵢ = 0.
-eqCritPoint(ρ) = [
-    norm(ΣJᵢXᵢ(ρ)) ~ 0
+eqCritPoint(ρ, K) = [
+    K[1] ~ K₁(ρ)   
+    K[2] ~ K₂(ρ)  
+    K[3] ~ K₃(ρ)  
+    norm(ΣJᵢXᵢ(ρ, K)) ~ 0
 ]
 
 # equations for higher energy.
@@ -152,9 +156,7 @@ eqEnergy(ρ) = [
 eqs = vcat(
     eqClosed([ρ01(x0,x1,x2,x3),ρ02(x0,x1,x2,x3),ρ03(x0,x1,x2,x3),ρ12(x0,x1,x2,x3),ρ13(x0,x1,x2,x3),ρ23(x0,x1,x2,x3)]),
     eqNonDegenerate([ρ01(x0,x1,x2,x3),ρ02(x0,x1,x2,x3),ρ03(x0,x1,x2,x3),ρ12(x0,x1,x2,x3),ρ13(x0,x1,x2,x3),ρ23(x0,x1,x2,x3)]),
-    eqCritPoint([ρ01(x0,x1,x2,x3),ρ02(x0,x1,x2,x3),ρ03(x0,x1,x2,x3),ρ12(x0,x1,x2,x3),ρ13(x0,x1,x2,x3),ρ23(x0,x1,x2,x3)]),
-# TODO: energy and cohomology conditions could also be part of the boundary conditions.
-    # eqEnergy,
+    eqCritPoint([ρ01(x0,x1,x2,x3),ρ02(x0,x1,x2,x3),ρ03(x0,x1,x2,x3),ρ12(x0,x1,x2,x3),ρ13(x0,x1,x2,x3),ρ23(x0,x1,x2,x3)], [K1(x0,x1,x2,x3), K2(x0,x1,x2,x3), K3(x0,x1,x2,x3)]),
 )
 
 # periodic boundary conditions for the 4-torus
@@ -187,13 +189,13 @@ bcs = [
 
 
 input_ = length(domain)
-n = 15
-chains = [Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1)) for _ in 1:6]
+n = 1
+chains = [Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1)) for _ in 1:9]
 
-strategy = QuasiRandomTraining(10^4)
+strategy = QuasiRandomTraining(10)
 ps = [Lux.setup(Random.default_rng(), c)[1] |> ComponentArray |> gpu .|> Float64 for c in chains]
 discretization = PhysicsInformedNN(chains, strategy, init_params = ps)
-@named pdesystem = PDESystem(eqs, bcs, domain, [x0, x1, x2, x3], [ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)])
+@named pdesystem = PDESystem(eqs, bcs, domain, [x0, x1, x2, x3], [ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3), K1(x0, x1, x2, x3), K2(x0, x1, x2, x3), K3(x0, x1, x2, x3)])
 prob = discretize(pdesystem, discretization)
 sym_prob = symbolic_discretize(pdesystem, discretization)
 

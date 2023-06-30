@@ -2,8 +2,8 @@ using ModelingToolkit
 using MethodOfLines
 using OrdinaryDiffEq
 using DomainSets
-using Makie
-using CairoMakie
+# using Makie
+# using CairoMakie
 
 @parameters x y t
 @variables u(..) 
@@ -43,22 +43,22 @@ function solve2d(;N = 32, method = Rosenbrock23(), t_max = 10.0, u₀)
     return sol
 end
 
-function createAnimation(sol, fpOut::String)
-    solu = sol.u[u(t,x,y)]
-    minColor = minimum(solu[1,2:end, 2:end])
-    maxColor = maximum(solu[1,2:end, 2:end])
-    dimT,dimX,dimY = size(solu)
+# function createAnimation(sol, fpOut::String)
+#     solu = sol.u[u(t,x,y)]
+#     minColor = minimum(solu[1,2:end, 2:end])
+#     maxColor = maximum(solu[1,2:end, 2:end])
+#     dimT,dimX,dimY = size(solu)
 
-    ti = Observable(1)
+#     ti = Observable(1)
 
-    buf = lift(ti) do ti
-        solu[ti,2:end,2:end]
-    end
+#     buf = lift(ti) do ti
+#         solu[ti,2:end,2:end]
+#     end
 
-    scene, axis, hm =  Makie.heatmap(buf, padding = (0,0), colorrange = (minColor, maxColor))
-    Colorbar(scene[:, end+1], hm)
+#     scene, axis, hm =  Makie.heatmap(buf, padding = (0,0), colorrange = (minColor, maxColor))
+#     Colorbar(scene[:, end+1], hm)
 
-    record(scene, fpOut, 1:dimT) do t
-        ti[] = t
-    end
-end
+#     record(scene, fpOut, 1:dimT) do t
+#         ti[] = t
+#     end
+# end

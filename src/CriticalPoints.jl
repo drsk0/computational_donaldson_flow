@@ -1,5 +1,5 @@
 using NeuralPDE: DomainSets
-using NeuralPDE, Lux, CUDA, Random, ComponentArrays, Optimization, OptimizationOptimisers, Integrals, LinearSolve
+using NeuralPDE, Lux, CUDA, Random, ComponentArrays, Optimization, OptimizationOptimisers, Integrals
 using LinearAlgebra
 import ModelingToolkit: Interval
 
@@ -10,13 +10,13 @@ import ModelingToolkit: Interval
 
 # the 4-torus
 domain = [
-    x0 ∈ Interval(0, 2π),
-    x1 ∈ Interval(0, 2π),
-    x2 ∈ Interval(0, 2π),
-    x3 ∈ Interval(0, 2π),
+    x0 ∈ Interval(0.0, 1.0),
+    x1 ∈ Interval(0.0, 1.0),
+    x2 ∈ Interval(0.0, 1.0),
+    x3 ∈ Interval(0.0, 1.0),
 ]
 
-volM = (2π)^4
+volM = 1.0
 
 ∂₀ = Differential(x0)
 ∂₁ = Differential(x1)
@@ -64,7 +64,7 @@ J₁ = [
     0 -1 0 0;
     1 0 0 0;
     0 0 0 -1;
-    00 0 1 0;
+    0 0 0 1 0;
 ] .|> Float64
 
 J₂ = [
@@ -109,7 +109,7 @@ A(ρ) = [
 
 # integrate over the full torus with the standard volume element.
 function ∫_M(f) 
-    IntegralProblem(f, zeros(4), 2π *ones(4))
+    IntegralProblem(f, zeros(4), ones(4))
     sol = solve(prob, HCubatureJL(); reltol = 1e-3, abstol = 1e-3)
     sol.u
 end
@@ -119,17 +119,10 @@ E(ρ) = ∫_M((K(ρ)[1]^2 + K(ρ)[2]^2 + K(ρ)[3]^2)*u(ρ))
 
 # The gradient vector field. At a cricitical point, this vanishes. In particular,
 # there is no need to take the exterior derivative to search for a critical point.
-#
-# TODO: Make sure we use the best algorithm for solve the linear problem AXᵢ = dKᵢ.
-# This is equivalent to ρ(Xᵢ, ⋅) = dKᵢ, is the Hamiltonian vector field of Kᵢ.
-# @register_symbolic(ΣJᵢXᵢ(ρ, K))
-# function ΣJᵢXᵢ(ρ, K) 
-#     B = A(ρ)
-#     J₁ * B \ d₀(K[1]) + J₂ * B \ d₀(K[2]) + J₃ * B \ d₀(K[3])
-# end
+ΣJᵢXᵢ(X) = sum([J₁*X[1], J₂*X[2], J₃*X[3]])
 
 # gradient operator
-gradE(ρ) = d₁(A(ρ)*ΣJᵢXᵢ(ρ))
+gradE(ρ, X) = d₁(A(ρ)*ΣJᵢXᵢ(X))
 
 
 # equations for dρ = 0.
@@ -143,13 +136,14 @@ eqNonDegenerate(ρ) = [
     u(ρ) ≳ ϵ,
 ]
 
+# This is equivalent to ρ(X, ⋅) = dKᵢ, i.e. X is the Hamiltonian vector field of F.
 eqHamilton(ρ, X, F) = [
     norm(A(ρ)*X - d₀(F(ρ)))^2 ~ 0
 ]
 
 # equations for ΣJᵢXᵢ = 0.
 eqCritPoint(X) = [
-    norm(sum([J₁*X[1], J₂*X[2], J₃*X[3]]))^2 ~ 0,
+    norm(ΣJᵢXᵢ(X))^2 ~ 0,
 ]
 
 # equations for higher energy.
@@ -174,71 +168,35 @@ eqs = vcat(
 
 # periodic boundary conditions for the 4-torus
 bcs = [
-    ρ01(0.0, x1, x2, x3) ~ ρ01(2π, x1, x2, x3),
-    ρ01(x0, 0.0, x2, x3) ~ ρ01(x0, 2π, x2, x3),
-    ρ01(x0, x1, 0.0, x3) ~ ρ01(x0, x1, 2π, x3),
-    ρ01(x0, x1, x2, 0.0) ~ ρ01(x0, x1, x2, 2π), 
-    ρ02(0.0, x1, x2, x3) ~ ρ02(2π, x1, x2, x3),
-    ρ02(x0, 0.0, x2, x3) ~ ρ02(x0, 2π, x2, x3),
-    ρ02(x0, x1, 0.0, x3) ~ ρ02(x0, x1, 2π, x3),
-    ρ02(x0, x1, x2, 0.0) ~ ρ02(x0, x1, x2, 2π), 
-    ρ03(0.0, x1, x2, x3) ~ ρ03(2π, x1, x2, x3),
-    ρ03(x0, 0.0, x2, x3) ~ ρ03(x0, 2π, x2, x3),
-    ρ03(x0, x1, 0.0, x3) ~ ρ03(x0, x1, 2π, x3),
-    ρ03(x0, x1, x2, 0.0) ~ ρ03(x0, x1, x2, 2π), 
-    ρ12(0.0, x1, x2, x3) ~ ρ12(2π, x1, x2, x3),
-    ρ12(x0, 0.0, x2, x3) ~ ρ12(x0, 2π, x2, x3),
-    ρ12(x0, x1, 0.0, x3) ~ ρ12(x0, x1, 2π, x3),
-    ρ12(x0, x1, x2, 0.0) ~ ρ12(x0, x1, x2, 2π), 
-    ρ13(0.0, x1, x2, x3) ~ ρ13(2π, x1, x2, x3),
-    ρ13(x0, 0.0, x2, x3) ~ ρ13(x0, 2π, x2, x3),
-    ρ13(x0, x1, 0.0, x3) ~ ρ13(x0, x1, 2π, x3),
-    ρ13(x0, x1, x2, 0.0) ~ ρ13(x0, x1, x2, 2π), 
-    ρ23(0.0, x1, x2, x3) ~ ρ23(2π, x1, x2, x3),
-    ρ23(x0, 0.0, x2, x3) ~ ρ23(x0, 2π, x2, x3),
-    ρ23(x0, x1, 0.0, x3) ~ ρ23(x0, x1, 2π, x3),
-    ρ23(x0, x1, x2, 0.0) ~ ρ23(x0, x1, x2, 2π),
-    # X1(0.0, x1, x2, x3)[1] ~ X1(2π, x1, x2, x3)[1],
-    # X1(x0, 0.0, x2, x3)[1] ~ X1(x0, 2π, x2, x3)[1],
-    # X1(x0, x1, 0.0, x3)[1] ~ X1(x0, x1, 2π, x3)[1],
-    # X1(x0, x1, x2, 0.0)[1] ~ X1(x0, x1, x2, 2π)[1],
-    # X2(0.0, x1, x2, x3)[1] ~ X2(2π, x1, x2, x3)[1],
-    # X2(x0, 0.0, x2, x3)[1] ~ X2(x0, 2π, x2, x3)[1],
-    # X2(x0, x1, 0.0, x3)[1] ~ X2(x0, x1, 2π, x3)[1],
-    # X2(x0, x1, x2, 0.0)[1] ~ X2(x0, x1, x2, 2π)[1],
-    # X3(0.0, x1, x2, x3)[1] ~ X3(2π, x1, x2, x3)[1],
-    # X3(x0, 0.0, x2, x3)[1] ~ X3(x0, 2π, x2, x3)[1],
-    # X3(x0, x1, 0.0, x3)[1] ~ X3(x0, x1, 2π, x3)[1],
-    # X3(x0, x1, x2, 0.0)[1] ~ X3(x0, x1, x2, 2π)[1],
-    # X1(0.0, x1, x2, x3)[2] ~ X1(2π, x1, x2, x3)[2],
-    # X1(x0, 0.0, x2, x3)[2] ~ X1(x0, 2π, x2, x3)[2],
-    # X1(x0, x1, 0.0, x3)[2] ~ X1(x0, x1, 2π, x3)[2],
-    # X1(x0, x1, x2, 0.0)[2] ~ X1(x0, x1, x2, 2π)[2],
-    # X2(0.0, x1, x2, x3)[2] ~ X2(2π, x1, x2, x3)[2],
-    # X2(x0, 0.0, x2, x3)[2] ~ X2(x0, 2π, x2, x3)[2],
-    # X2(x0, x1, 0.0, x3)[2] ~ X2(x0, x1, 2π, x3)[2],
-    # X2(x0, x1, x2, 0.0)[2] ~ X2(x0, x1, x2, 2π)[2],
-    # X3(0.0, x1, x2, x3)[2] ~ X3(2π, x1, x2, x3)[2],
-    # X3(x0, 0.0, x2, x3)[2] ~ X3(x0, 2π, x2, x3)[2],
-    # X3(x0, x1, 0.0, x3)[2] ~ X3(x0, x1, 2π, x3)[2],
-    # X3(x0, x1, x2, 0.0)[2] ~ X3(x0, x1, x2, 2π)[2],
-    # X1(0.0, x1, x2, x3)[3] ~ X1(2π, x1, x2, x3)[3],
-    # X1(x0, 0.0, x2, x3)[3] ~ X1(x0, 2π, x2, x3)[3],
-    # X1(x0, x1, 0.0, x3)[3] ~ X1(x0, x1, 2π, x3)[3],
-    # X1(x0, x1, x2, 0.0)[3] ~ X1(x0, x1, x2, 2π)[3],
-    # X2(0.0, x1, x2, x3)[3] ~ X2(2π, x1, x2, x3)[3],
-    # X2(x0, 0.0, x2, x3)[3] ~ X2(x0, 2π, x2, x3)[3],
-    # X2(x0, x1, 0.0, x3)[3] ~ X2(x0, x1, 2π, x3)[3],
-    # X2(x0, x1, x2, 0.0)[3] ~ X2(x0, x1, x2, 2π)[3],
-    # X3(0.0, x1, x2, x3)[3] ~ X3(2π, x1, x2, x3)[3],
-    # X3(x0, 0.0, x2, x3)[3] ~ X3(x0, 2π, x2, x3)[3],
-    # X3(x0, x1, 0.0, x3)[3] ~ X3(x0, x1, 2π, x3)[3],
-    # X3(x0, x1, x2, 0.0)[3] ~ X3(x0, x1, x2, 2π)[3],
+    ρ01(0.0, x1, x2, x3) ~ ρ01(1.0, x1, x2, x3),
+    ρ01(x0, 0.0, x2, x3) ~ ρ01(x0, 1.0, x2, x3),
+    ρ01(x0, x1, 0.0, x3) ~ ρ01(x0, x1, 1.0, x3),
+    ρ01(x0, x1, x2, 0.0) ~ ρ01(x0, x1, x2, 1.0), 
+    ρ02(0.0, x1, x2, x3) ~ ρ02(1.0, x1, x2, x3),
+    ρ02(x0, 0.0, x2, x3) ~ ρ02(x0, 1.0, x2, x3),
+    ρ02(x0, x1, 0.0, x3) ~ ρ02(x0, x1, 1.0, x3),
+    ρ02(x0, x1, x2, 0.0) ~ ρ02(x0, x1, x2, 1.0), 
+    ρ03(0.0, x1, x2, x3) ~ ρ03(1.0, x1, x2, x3),
+    ρ03(x0, 0.0, x2, x3) ~ ρ03(x0, 1.0, x2, x3),
+    ρ03(x0, x1, 0.0, x3) ~ ρ03(x0, x1, 1.0, x3),
+    ρ03(x0, x1, x2, 0.0) ~ ρ03(x0, x1, x2, 1.0), 
+    ρ12(0.0, x1, x2, x3) ~ ρ12(1.0, x1, x2, x3),
+    ρ12(x0, 0.0, x2, x3) ~ ρ12(x0, 1.0, x2, x3),
+    ρ12(x0, x1, 0.0, x3) ~ ρ12(x0, x1, 1.0, x3),
+    ρ12(x0, x1, x2, 0.0) ~ ρ12(x0, x1, x2, 1.0), 
+    ρ13(0.0, x1, x2, x3) ~ ρ13(1.0, x1, x2, x3),
+    ρ13(x0, 0.0, x2, x3) ~ ρ13(x0, 1.0, x2, x3),
+    ρ13(x0, x1, 0.0, x3) ~ ρ13(x0, x1, 1.0, x3),
+    ρ13(x0, x1, x2, 0.0) ~ ρ13(x0, x1, x2, 1.0), 
+    ρ23(0.0, x1, x2, x3) ~ ρ23(1.0, x1, x2, x3),
+    ρ23(x0, 0.0, x2, x3) ~ ρ23(x0, 1.0, x2, x3),
+    ρ23(x0, x1, 0.0, x3) ~ ρ23(x0, x1, 1.0, x3),
+    ρ23(x0, x1, x2, 0.0) ~ ρ23(x0, x1, x2, 1.0),
 ]
 
 
 input_ = length(domain)
-n = 1
+n = 16
 chains1 = [Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1)) for _ in 1:6]
 chains4 = [Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1)) for _ in 1:3*4]
 chains = vcat(chains1, chains4)
@@ -248,7 +206,6 @@ ps = [Lux.setup(Random.default_rng(), c)[1] |> ComponentArray |> gpu .|> Float64
 discretization = PhysicsInformedNN(chains, strategy, init_params = ps)
 @named pdesystem = PDESystem(eqs, bcs, domain, [x0, x1, x2, x3], 
                     [ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3), 
-                    # K1(x0, x1, x2, x3), K2(x0, x1, x2, x3), K3(x0, x1, x2, x3), 
                     X11(x0, x1, x2, x3),X12(x0, x1, x2, x3),X13(x0, x1, x2, x3),X14(x0, x1, x2, x3),
                     X21(x0, x1, x2, x3),X22(x0, x1, x2, x3),X23(x0, x1, x2, x3),X24(x0, x1, x2, x3),
                     X31(x0, x1, x2, x3),X32(x0, x1, x2, x3),X33(x0, x1, x2, x3),X34(x0, x1, x2, x3)]

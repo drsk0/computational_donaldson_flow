@@ -1,10 +1,12 @@
 using NeuralPDE: DomainSets
-using NeuralPDE, Lux, CUDA, Random, ComponentArrays, Optimization, OptimizationOptimisers, Integrals
+using NeuralPDE, Lux, CUDA, Random, ComponentArrays, Optimization, OptimizationOptimisers, Integrals, LinearSolve
 using LinearAlgebra
 import ModelingToolkit: Interval
 
 @parameters x0 x1 x2 x3
-@variables ρ01(..) ρ02(..) ρ03(..) ρ12(..) ρ13(..) ρ23(..) K1(..) K2(..) K3(..)
+@variables ρ01(..) ρ02(..) ρ03(..) ρ12(..) ρ13(..) ρ23(..) 
+# @variables K1(..) K2(..) K3(..) 
+@variables X11(..) X12(..) X13(..) X14(..) X21(..) X22(..) X23(..) X24(..) X31(..) X32(..) X33(..) X34(..)
 
 # the 4-torus
 domain = [
@@ -27,6 +29,7 @@ d₀(f) = [
     ∂₂(f),
     ∂₃(f),
 ]
+
 d₁(λ) = [
     # commented are the signed permutations of the indeces
 
@@ -119,11 +122,11 @@ E(ρ) = ∫_M((K(ρ)[1]^2 + K(ρ)[2]^2 + K(ρ)[3]^2)*u(ρ))
 #
 # TODO: Make sure we use the best algorithm for solve the linear problem AXᵢ = dKᵢ.
 # This is equivalent to ρ(Xᵢ, ⋅) = dKᵢ, is the Hamiltonian vector field of Kᵢ.
-function ΣJᵢXᵢ(ρ, K) 
-    B = A(ρ)
-    J₁ * B \ d₀(K[1]) + J₂ * B \ d₀(K[2]) + J₃ * B \ d₀(K[3])
-end
 # @register_symbolic(ΣJᵢXᵢ(ρ, K))
+# function ΣJᵢXᵢ(ρ, K) 
+#     B = A(ρ)
+#     J₁ * B \ d₀(K[1]) + J₂ * B \ d₀(K[2]) + J₃ * B \ d₀(K[3])
+# end
 
 # gradient operator
 gradE(ρ) = d₁(A(ρ)*ΣJᵢXᵢ(ρ))
@@ -131,7 +134,7 @@ gradE(ρ) = d₁(A(ρ)*ΣJᵢXᵢ(ρ))
 
 # equations for dρ = 0.
 eqClosed(ρ) = [
-    norm(d₂(ρ)) ~ 0
+    norm(d₂(ρ))^2 ~ 0
 ]
 
 # equations for u > 0.
@@ -140,12 +143,13 @@ eqNonDegenerate(ρ) = [
     u(ρ) ≳ ϵ,
 ]
 
+eqHamilton(ρ, X, F) = [
+    norm(A(ρ)*X - d₀(F(ρ)))^2 ~ 0
+]
+
 # equations for ΣJᵢXᵢ = 0.
-eqCritPoint(ρ, K) = [
-    K[1] ~ K₁(ρ)   
-    K[2] ~ K₂(ρ)  
-    K[3] ~ K₃(ρ)  
-    norm(ΣJᵢXᵢ(ρ, K)) ~ 0
+eqCritPoint(X) = [
+    norm(sum([J₁*X[1], J₂*X[2], J₃*X[3]]))^2 ~ 0,
 ]
 
 # equations for higher energy.
@@ -156,7 +160,16 @@ eqEnergy(ρ) = [
 eqs = vcat(
     eqClosed([ρ01(x0,x1,x2,x3),ρ02(x0,x1,x2,x3),ρ03(x0,x1,x2,x3),ρ12(x0,x1,x2,x3),ρ13(x0,x1,x2,x3),ρ23(x0,x1,x2,x3)]),
     eqNonDegenerate([ρ01(x0,x1,x2,x3),ρ02(x0,x1,x2,x3),ρ03(x0,x1,x2,x3),ρ12(x0,x1,x2,x3),ρ13(x0,x1,x2,x3),ρ23(x0,x1,x2,x3)]),
-    eqCritPoint([ρ01(x0,x1,x2,x3),ρ02(x0,x1,x2,x3),ρ03(x0,x1,x2,x3),ρ12(x0,x1,x2,x3),ρ13(x0,x1,x2,x3),ρ23(x0,x1,x2,x3)], [K1(x0,x1,x2,x3), K2(x0,x1,x2,x3), K3(x0,x1,x2,x3)]),
+    eqHamilton([ρ01(x0,x1,x2,x3),ρ02(x0,x1,x2,x3),ρ03(x0,x1,x2,x3),ρ12(x0,x1,x2,x3),ρ13(x0,x1,x2,x3),ρ23(x0,x1,x2,x3)], 
+                [X11(x0,x1,x2,x3), X12(x0,x1,x2,x3), X13(x0,x1,x2,x3), X14(x0,x1,x2,x3)], K₁),
+    eqHamilton([ρ01(x0,x1,x2,x3),ρ02(x0,x1,x2,x3),ρ03(x0,x1,x2,x3),ρ12(x0,x1,x2,x3),ρ13(x0,x1,x2,x3),ρ23(x0,x1,x2,x3)], 
+                [X21(x0,x1,x2,x3), X22(x0,x1,x2,x3), X23(x0,x1,x2,x3), X24(x0,x1,x2,x3)], K₂),
+    eqHamilton([ρ01(x0,x1,x2,x3),ρ02(x0,x1,x2,x3),ρ03(x0,x1,x2,x3),ρ12(x0,x1,x2,x3),ρ13(x0,x1,x2,x3),ρ23(x0,x1,x2,x3)], 
+                [X31(x0,x1,x2,x3), X32(x0,x1,x2,x3), X33(x0,x1,x2,x3), X34(x0,x1,x2,x3)], K₃),
+    eqCritPoint([[X11(x0,x1,x2,x3), X12(x0,x1,x2,x3), X13(x0,x1,x2,x3), X14(x0,x1,x2,x3)], 
+                 [X21(x0,x1,x2,x3), X22(x0,x1,x2,x3), X23(x0,x1,x2,x3), X24(x0,x1,x2,x3)], 
+                 [X31(x0,x1,x2,x3), X32(x0,x1,x2,x3), X33(x0,x1,x2,x3), X34(x0,x1,x2,x3)]
+                ])
 )
 
 # periodic boundary conditions for the 4-torus
@@ -185,17 +198,62 @@ bcs = [
     ρ23(x0, 0.0, x2, x3) ~ ρ23(x0, 2π, x2, x3),
     ρ23(x0, x1, 0.0, x3) ~ ρ23(x0, x1, 2π, x3),
     ρ23(x0, x1, x2, 0.0) ~ ρ23(x0, x1, x2, 2π),
+    # X1(0.0, x1, x2, x3)[1] ~ X1(2π, x1, x2, x3)[1],
+    # X1(x0, 0.0, x2, x3)[1] ~ X1(x0, 2π, x2, x3)[1],
+    # X1(x0, x1, 0.0, x3)[1] ~ X1(x0, x1, 2π, x3)[1],
+    # X1(x0, x1, x2, 0.0)[1] ~ X1(x0, x1, x2, 2π)[1],
+    # X2(0.0, x1, x2, x3)[1] ~ X2(2π, x1, x2, x3)[1],
+    # X2(x0, 0.0, x2, x3)[1] ~ X2(x0, 2π, x2, x3)[1],
+    # X2(x0, x1, 0.0, x3)[1] ~ X2(x0, x1, 2π, x3)[1],
+    # X2(x0, x1, x2, 0.0)[1] ~ X2(x0, x1, x2, 2π)[1],
+    # X3(0.0, x1, x2, x3)[1] ~ X3(2π, x1, x2, x3)[1],
+    # X3(x0, 0.0, x2, x3)[1] ~ X3(x0, 2π, x2, x3)[1],
+    # X3(x0, x1, 0.0, x3)[1] ~ X3(x0, x1, 2π, x3)[1],
+    # X3(x0, x1, x2, 0.0)[1] ~ X3(x0, x1, x2, 2π)[1],
+    # X1(0.0, x1, x2, x3)[2] ~ X1(2π, x1, x2, x3)[2],
+    # X1(x0, 0.0, x2, x3)[2] ~ X1(x0, 2π, x2, x3)[2],
+    # X1(x0, x1, 0.0, x3)[2] ~ X1(x0, x1, 2π, x3)[2],
+    # X1(x0, x1, x2, 0.0)[2] ~ X1(x0, x1, x2, 2π)[2],
+    # X2(0.0, x1, x2, x3)[2] ~ X2(2π, x1, x2, x3)[2],
+    # X2(x0, 0.0, x2, x3)[2] ~ X2(x0, 2π, x2, x3)[2],
+    # X2(x0, x1, 0.0, x3)[2] ~ X2(x0, x1, 2π, x3)[2],
+    # X2(x0, x1, x2, 0.0)[2] ~ X2(x0, x1, x2, 2π)[2],
+    # X3(0.0, x1, x2, x3)[2] ~ X3(2π, x1, x2, x3)[2],
+    # X3(x0, 0.0, x2, x3)[2] ~ X3(x0, 2π, x2, x3)[2],
+    # X3(x0, x1, 0.0, x3)[2] ~ X3(x0, x1, 2π, x3)[2],
+    # X3(x0, x1, x2, 0.0)[2] ~ X3(x0, x1, x2, 2π)[2],
+    # X1(0.0, x1, x2, x3)[3] ~ X1(2π, x1, x2, x3)[3],
+    # X1(x0, 0.0, x2, x3)[3] ~ X1(x0, 2π, x2, x3)[3],
+    # X1(x0, x1, 0.0, x3)[3] ~ X1(x0, x1, 2π, x3)[3],
+    # X1(x0, x1, x2, 0.0)[3] ~ X1(x0, x1, x2, 2π)[3],
+    # X2(0.0, x1, x2, x3)[3] ~ X2(2π, x1, x2, x3)[3],
+    # X2(x0, 0.0, x2, x3)[3] ~ X2(x0, 2π, x2, x3)[3],
+    # X2(x0, x1, 0.0, x3)[3] ~ X2(x0, x1, 2π, x3)[3],
+    # X2(x0, x1, x2, 0.0)[3] ~ X2(x0, x1, x2, 2π)[3],
+    # X3(0.0, x1, x2, x3)[3] ~ X3(2π, x1, x2, x3)[3],
+    # X3(x0, 0.0, x2, x3)[3] ~ X3(x0, 2π, x2, x3)[3],
+    # X3(x0, x1, 0.0, x3)[3] ~ X3(x0, x1, 2π, x3)[3],
+    # X3(x0, x1, x2, 0.0)[3] ~ X3(x0, x1, x2, 2π)[3],
 ]
 
 
 input_ = length(domain)
 n = 1
-chains = [Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1)) for _ in 1:9]
+chains1 = [Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1)) for _ in 1:6]
+chains4 = [Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1)) for _ in 1:3*4]
+chains = vcat(chains1, chains4)
 
-strategy = QuasiRandomTraining(10)
+strategy = QuasiRandomTraining(1000)
 ps = [Lux.setup(Random.default_rng(), c)[1] |> ComponentArray |> gpu .|> Float64 for c in chains]
 discretization = PhysicsInformedNN(chains, strategy, init_params = ps)
-@named pdesystem = PDESystem(eqs, bcs, domain, [x0, x1, x2, x3], [ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3), K1(x0, x1, x2, x3), K2(x0, x1, x2, x3), K3(x0, x1, x2, x3)])
+@named pdesystem = PDESystem(eqs, bcs, domain, [x0, x1, x2, x3], 
+                    [ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3), 
+                    # K1(x0, x1, x2, x3), K2(x0, x1, x2, x3), K3(x0, x1, x2, x3), 
+                    X11(x0, x1, x2, x3),X12(x0, x1, x2, x3),X13(x0, x1, x2, x3),X14(x0, x1, x2, x3),
+                    X21(x0, x1, x2, x3),X22(x0, x1, x2, x3),X23(x0, x1, x2, x3),X24(x0, x1, x2, x3),
+                    X31(x0, x1, x2, x3),X32(x0, x1, x2, x3),X33(x0, x1, x2, x3),X34(x0, x1, x2, x3)]
+)
+
 prob = discretize(pdesystem, discretization)
 sym_prob = symbolic_discretize(pdesystem, discretization)
 

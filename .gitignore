@@ -3,3 +3,4 @@
 *.pdf
 devenv.local.nix
 2d_solutions/*
+crit_solutions/*

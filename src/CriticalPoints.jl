@@ -2,6 +2,7 @@ using NeuralPDE: DomainSets
 using NeuralPDE, Lux, CUDA, Random, ComponentArrays, Optimization, OptimizationOptimisers, Integrals
 using LinearAlgebra
 import ModelingToolkit: Interval
+import SciMLBase: OptimizationSolution
 
 @parameters x0 x1 x2 x3
 @variables ρ01(..) ρ02(..) ρ03(..) ρ12(..) ρ13(..) ρ23(..) 
@@ -108,14 +109,15 @@ A(ρ) = [
 ]
 
 # integrate over the full torus with the standard volume element.
+# f needs to have the signature T^4 -> Parameters -> Real.
 function ∫_M(f) 
-    IntegralProblem(f, zeros(4), ones(4))
+    prob = IntegralProblem{false}(f, zeros(4), ones(4))
     sol = solve(prob, HCubatureJL(); reltol = 1e-3, abstol = 1e-3)
     sol.u
 end
 
 # energy
-E(ρ) = ∫_M((K(ρ)[1]^2 + K(ρ)[2]^2 + K(ρ)[3]^2)*u(ρ))
+E(ρ) = ∫_M((xs, _) -> (K(ρ(xs))[1]^2 + K(ρ(xs))[2]^2 + K(ρ(xs))[3]^2)*u(ρ(xs)))
 
 # The gradient vector field. At a cricitical point, this vanishes. In particular,
 # there is no need to take the exterior derivative to search for a critical point.
@@ -224,5 +226,46 @@ callback = function (p, l)
     return false
 end
 
-
 run(maxiters::Int = 1) = Optimization.solve(prob, Adam(0.01); callback=callback, maxiters=maxiters)
+
+
+symToIx = Dict(
+    :ρ01 => 1,
+    :ρ02 => 2,
+    :ρ03 => 3,
+    :ρ12 => 4,
+    :ρ13 => 5,
+    :ρ23 => 6,
+    :X11 => 7,
+    :X12 => 8,
+    :X13 => 9,
+    :X24 => 10,
+    :X21 => 11,
+    :X22 => 12,
+    :X23 => 13,
+    :X24 => 14,
+    :X31 => 15,
+    :X32 => 16,
+    :X33 => 17,
+    :X34 => 18,
+)
+
+function solToCoordFunction(sol::OptimizationSolution, phi, sym::Symbol)
+    weights = sol.u.depvar[sym]
+    f(xs) = phi[symToIx[sym]](xs, weights)[1]
+
+    return f
+end
+
+function ρ(sol::OptimizationSolution, phi) 
+    f(xs) = [solToCoordFunction(sol, phi, sym)(xs) for sym in [:ρ01, :ρ02, :ρ03, :ρ12, :ρ13, :ρ23]]
+end
+
+function X(sol::OptimizationSolution, phi) 
+    X1(xs) = [solToCoordFunction(sol, phi, sym)(xs) for sym in [:X11, :X12, :X13, :X14]]
+    X2(xs) = [solToCoordFunction(sol, phi, sym)(xs) for sym in [:X21, :X22, :X23, :X24]]
+    X3(xs) = [solToCoordFunction(sol, phi, sym)(xs) for sym in [:X31, :X32, :X33, :X34]]
+
+    X(xs) = [X1(xs), X2(xs), X3(xs)]
+    return X
+end

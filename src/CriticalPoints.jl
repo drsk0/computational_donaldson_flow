@@ -140,12 +140,18 @@ eqNonDegenerate(ρ) = [
 
 # This is equivalent to ρ(X, ⋅) = dKᵢ, i.e. X is the Hamiltonian vector field of F.
 eqHamilton(ρ, X, F) = [
-    norm(A(ρ)*X - d₀(F(ρ)))^2 ~ 0
+    (A(ρ)*X)[1] - d₀(F(ρ))[1] ~ 0
+    (A(ρ)*X)[2] - d₀(F(ρ))[2] ~ 0
+    (A(ρ)*X)[3] - d₀(F(ρ))[3] ~ 0
+    (A(ρ)*X)[4] - d₀(F(ρ))[4] ~ 0
 ]
 
 # equations for ΣJᵢXᵢ = 0.
 eqCritPoint(X) = [
-    norm(ΣJᵢXᵢ(X))^2 ~ 0,
+    ΣJᵢXᵢ(X)[1] ~ 0,
+    ΣJᵢXᵢ(X)[2] ~ 0,
+    ΣJᵢXᵢ(X)[3] ~ 0,
+    ΣJᵢXᵢ(X)[4] ~ 0,
 ]
 
 # equations for higher energy.
@@ -196,16 +202,38 @@ bcs = [
     ρ23(x0, x1, x2, 0.0) ~ ρ23(x0, x1, x2, 1.0),
 ]
 
+ixToSym = Dict(
+   1 => :ρ01,
+   2 => :ρ02,
+   3 => :ρ03,
+   4 => :ρ12,
+   5 => :ρ13,
+   6 => :ρ23,
+   7 => :X11,
+   8 => :X12,
+   9 => :X13,
+   10 => :X14,
+   11 => :X21,
+   12 => :X22,
+   13 => :X23,
+   14 => :X24,
+   15 => :X31,
+   16 => :X32,
+   17 => :X33,
+   18 => :X34,
+)
+
 
 input_ = length(domain)
 n = 16
-chains1 = [Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1)) for _ in 1:6]
-chains4 = [Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1)) for _ in 1:3*4]
-chains = vcat(chains1, chains4)
+chains1 = NamedTuple((ixToSym[ix], Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1))) for ix in 1:6)
+chains4 = NamedTuple((ixToSym[ix], Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1))) for ix in 7:18)
+chains = merge(chains1, chains4)
+chains0 = collect(chains)
 
 strategy = QuasiRandomTraining(1000)
-ps = [Lux.setup(Random.default_rng(), c)[1] |> ComponentArray |> gpu .|> Float64 for c in chains]
-discretization = PhysicsInformedNN(chains, strategy, init_params = ps)
+ps = map(c -> Lux.setup(Random.default_rng(), c)[1], chains) |> ComponentArray .|> Float64 |> gpu 
+discretization = PhysicsInformedNN(chains0, strategy, init_params = ps)
 @named pdesystem = PDESystem(eqs, bcs, domain, [x0, x1, x2, x3], 
                     [ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3), 
                     X11(x0, x1, x2, x3),X12(x0, x1, x2, x3),X13(x0, x1, x2, x3),X14(x0, x1, x2, x3),
@@ -228,43 +256,21 @@ end
 
 run(maxiters::Int = 1) = Optimization.solve(prob, Adam(0.01); callback=callback, maxiters=maxiters)
 
-
-symToIx = Dict(
-    :ρ01 => 1,
-    :ρ02 => 2,
-    :ρ03 => 3,
-    :ρ12 => 4,
-    :ρ13 => 5,
-    :ρ23 => 6,
-    :X11 => 7,
-    :X12 => 8,
-    :X13 => 9,
-    :X24 => 10,
-    :X21 => 11,
-    :X22 => 12,
-    :X23 => 13,
-    :X24 => 14,
-    :X31 => 15,
-    :X32 => 16,
-    :X33 => 17,
-    :X34 => 18,
-)
-
-function solToCoordFunction(sol::OptimizationSolution, phi, sym::Symbol)
+function solToCoordFunction(sol::OptimizationSolution, sym_prob, sym::Symbol)
     weights = sol.u.depvar[sym]
-    f(xs) = phi[symToIx[sym]](xs, weights)[1]
+    f(xs) = sym_prob.phi[sym_prob.dict_depvars[sym]](xs, weights)[1]
 
     return f
 end
 
-function ρ(sol::OptimizationSolution, phi) 
-    f(xs) = [solToCoordFunction(sol, phi, sym)(xs) for sym in [:ρ01, :ρ02, :ρ03, :ρ12, :ρ13, :ρ23]]
+function ρ(sol::OptimizationSolution, sym_prob) 
+    f(xs) = [solToCoordFunction(sol, sym_prob, sym)(xs) for sym in [:ρ01, :ρ02, :ρ03, :ρ12, :ρ13, :ρ23]]
 end
 
-function X(sol::OptimizationSolution, phi) 
-    X1(xs) = [solToCoordFunction(sol, phi, sym)(xs) for sym in [:X11, :X12, :X13, :X14]]
-    X2(xs) = [solToCoordFunction(sol, phi, sym)(xs) for sym in [:X21, :X22, :X23, :X24]]
-    X3(xs) = [solToCoordFunction(sol, phi, sym)(xs) for sym in [:X31, :X32, :X33, :X34]]
+function X(sol::OptimizationSolution, sym_prob) 
+    X1(xs) = [solToCoordFunction(sol, sym_prob, sym)(xs) for sym in [:X11, :X12, :X13, :X14]]
+    X2(xs) = [solToCoordFunction(sol, sym_prob, sym)(xs) for sym in [:X21, :X22, :X23, :X24]]
+    X3(xs) = [solToCoordFunction(sol, sym_prob, sym)(xs) for sym in [:X31, :X32, :X33, :X34]]
 
     X(xs) = [X1(xs), X2(xs), X3(xs)]
     return X

@@ -1,6 +1,8 @@
 using NeuralPDE: DomainSets
 using NeuralPDE, Lux, CUDA, Random, ComponentArrays, Optimization, OptimizationOptimisers, Integrals
 using LinearAlgebra
+using JLD2
+using Base.Threads
 import ModelingToolkit: Interval
 
 @parameters x0 x1 x2 x3
@@ -153,7 +155,7 @@ eqNonVanishing(X, ϵₓ) = norm(X, 1) ≳ ϵₓ
 
 eqs = vcat(
     eqClosed([ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)]),
-    # eqNonDegenerate([ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)], 0.1),
+    eqNonDegenerate([ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)], 0.1),
     eqHamilton([ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)],
         [X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)], K₁),
     eqHamilton([ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)],
@@ -163,9 +165,9 @@ eqs = vcat(
     eqCritPoint([[X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)],
         [X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)],
         [X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)],
-    eqNonVanishing([X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)], 0.1),
-    eqNonVanishing([X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)], 0.1),
-    eqNonVanishing([X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)], 0.1),
+    eqNonVanishing([X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)], 0.3),
+    eqNonVanishing([X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)], 0.3),
+    eqNonVanishing([X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)], 0.3),
     ])
 )
 
@@ -218,17 +220,6 @@ ixToSym = Dict(
     18 => :X34,
 )
 
-
-input_ = length(domain)
-n = 16
-chains1 = NamedTuple((ixToSym[ix], Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1))) for ix in 1:6)
-chains4 = NamedTuple((ixToSym[ix], Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1))) for ix in 7:18)
-chains = merge(chains1, chains4)
-chains0 = collect(chains)
-
-strategy = QuasiRandomTraining(1000)
-ps = map(c -> Lux.setup(Random.default_rng(), c)[1], chains) |> ComponentArray .|> Float64 |> gpu
-discretization = PhysicsInformedNN(chains0, strategy, init_params=ps)
 @named pdesystem = PDESystem(eqs, bcs, domain, [x0, x1, x2, x3],
     [ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3),
         X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3),
@@ -236,20 +227,50 @@ discretization = PhysicsInformedNN(chains0, strategy, init_params=ps)
         X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)]
 )
 
-prob = discretize(pdesystem, discretization)
-sym_prob = symbolic_discretize(pdesystem, discretization)
+function run(maxsols::Int = 1; ϵ::Float64 = 1e-4, maxiters::Int = 1, fp::String = "solution") 
+    strategy = QuasiRandomTraining(1000)
+    input_ = length(domain)
+    n = 16
 
-pde_inner_loss_functions = sym_prob.loss_functions.pde_loss_functions
-bcs_inner_loss_functions = sym_prob.loss_functions.bc_loss_functions
+    chains1 = NamedTuple((ixToSym[ix], Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1))) for ix in 1:6)
+    chains4 = NamedTuple((ixToSym[ix], Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1))) for ix in 7:18)
+    chains = merge(chains1, chains4)
+    chains0 = collect(chains)
 
-callback(ϵ::Float64) = function (p, l)
-    println("loss: ", l)
-    println("pde_losses: ", map(l_ -> l_(p), pde_inner_loss_functions))
-    println("bcs_losses: ", map(l_ -> l_(p), bcs_inner_loss_functions))
-    return l < ϵ
+
+    callback(ϵ::Float64, fp::String) = function(p, l)
+        println("fp: ", fp)
+        println("loss: ", l)
+        # println("pde_losses: ", map(l_ -> l_(p), pde_inner_loss_functions))
+        # println("bcs_losses: ", map(l_ -> l_(p), bcs_inner_loss_functions))
+        return l < ϵ
+    end
+
+    solutions = Vector{ComponentVector}(undef, maxsols)
+    if CUDA.functional()
+        synchronize()
+    end
+
+    @sync for i in 1:maxsols
+        @async begin
+            ps = map(c -> Lux.setup(Random.default_rng(), c)[1], chains) |> ComponentArray .|> Float64 |> gpu
+            discretization = PhysicsInformedNN(chains0, strategy, init_params=ps)
+            prob = discretize(pdesystem, discretization)
+            sym_prob = symbolic_discretize(pdesystem, discretization)
+            pde_inner_loss_functions = sym_prob.loss_functions.pde_loss_functions
+            # bcs_inner_loss_functions = sym_prob.loss_functions.bc_loss_functions
+            sol = Optimization.solve(prob, Adam(0.01); callback=callback(ϵ, fp * "$i"), maxiters = maxiters)
+            depvar = sol.u.depvar |> cpu
+            JLD2.save_object(fp * "$i.jld2", depvar)
+            solutions[i] = depvar
+            # energy = E(ρ(depvars, sym_prob))
+            # println("energy of $fp": "$energy")
+            nothing
+        end
+    end
+
+    return solutions
 end
-
-run(maxiters::Int=1; ϵ::Float64) = Optimization.solve(prob, Adam(0.01); callback=callback(ϵ), maxiters=maxiters)
 
 function solToCoordFunction(sol::ComponentVector, sym_prob, sym::Symbol)
     weights = sol[sym]

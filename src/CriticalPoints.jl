@@ -2,7 +2,6 @@ using NeuralPDE: DomainSets
 using NeuralPDE, Lux, CUDA, Random, ComponentArrays, Optimization, OptimizationOptimisers, Integrals
 using LinearAlgebra
 import ModelingToolkit: Interval
-import SciMLBase: OptimizationSolution
 
 @parameters x0 x1 x2 x3
 @variables ρ01(..) ρ02(..) ρ03(..) ρ12(..) ρ13(..) ρ23(..)
@@ -128,9 +127,7 @@ gradE(ρ, X) = d₁(A(ρ) * ΣJᵢXᵢ(X))
 
 
 # equations for dρ = 0.
-eqClosed(ρ) = [
-    norm(d₂(ρ))^2 ~ 0
-]
+eqClosed(ρ) = d₂(ρ)[:] .~ 0
 
 # equations for u > 0.
 eqNonDegenerate(ρ, ϵᵤ) = [
@@ -152,9 +149,11 @@ eqEnergy(ρ) = [
     E(ρ) ≳ 2 * volM + 1
 ]
 
+eqNonVanishing(X, ϵₓ) = norm(X, 1) ≳ ϵₓ
+
 eqs = vcat(
     eqClosed([ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)]),
-    eqNonDegenerate([ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)], 0.1),
+    # eqNonDegenerate([ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)], 0.1),
     eqHamilton([ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)],
         [X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)], K₁),
     eqHamilton([ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)],
@@ -163,7 +162,10 @@ eqs = vcat(
         [X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)], K₃),
     eqCritPoint([[X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)],
         [X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)],
-        [X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)]
+        [X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)],
+    eqNonVanishing([X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)], 0.1),
+    eqNonVanishing([X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)], 0.1),
+    eqNonVanishing([X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)], 0.1),
     ])
 )
 
@@ -249,18 +251,18 @@ end
 
 run(maxiters::Int=1; ϵ::Float64) = Optimization.solve(prob, Adam(0.01); callback=callback(ϵ), maxiters=maxiters)
 
-function solToCoordFunction(sol::OptimizationSolution, sym_prob, sym::Symbol)
-    weights = sol.u.depvar[sym]
+function solToCoordFunction(sol::ComponentVector, sym_prob, sym::Symbol)
+    weights = sol[sym]
     f(xs) = sym_prob.phi[sym_prob.dict_depvars[sym]](xs, weights)[1]
 
     return f
 end
 
-function ρ(sol::OptimizationSolution, sym_prob)
+function ρ(sol::ComponentVector, sym_prob)
     f(xs) = [solToCoordFunction(sol, sym_prob, sym)(xs) for sym in [:ρ01, :ρ02, :ρ03, :ρ12, :ρ13, :ρ23]]
 end
 
-function X(sol::OptimizationSolution, sym_prob)
+function X(sol::ComponentVector, sym_prob)
     X1(xs) = [solToCoordFunction(sol, sym_prob, sym)(xs) for sym in [:X11, :X12, :X13, :X14]]
     X2(xs) = [solToCoordFunction(sol, sym_prob, sym)(xs) for sym in [:X21, :X22, :X23, :X24]]
     X3(xs) = [solToCoordFunction(sol, sym_prob, sym)(xs) for sym in [:X31, :X32, :X33, :X34]]

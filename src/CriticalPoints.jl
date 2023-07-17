@@ -1,6 +1,8 @@
 using NeuralPDE: DomainSets
 using NeuralPDE, Lux, CUDA, Random, ComponentArrays, Optimization, OptimizationOptimisers, Integrals
 using LinearAlgebra
+using Distributed
+using SharedArrays
 using JLD2
 using Base.Threads
 import ModelingToolkit: Interval
@@ -164,11 +166,10 @@ eqs = vcat(
         [X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)], K₃),
     eqCritPoint([[X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)],
         [X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)],
-        [X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)],
-    eqNonVanishing([X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)], 0.3),
-    eqNonVanishing([X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)], 0.3),
-    eqNonVanishing([X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)], 0.3),
-    ])
+        [X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)]]),
+    eqNonVanishing([X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)], 1.0),
+    eqNonVanishing([X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)], 1.0),
+    eqNonVanishing([X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)], 1.0),
 )
 
 # periodic boundary conditions for the 4-torus
@@ -227,49 +228,46 @@ ixToSym = Dict(
         X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)]
 )
 
+strategy = QuasiRandomTraining(1000)
+input_ = length(domain)
+n = 16
+chains1 = NamedTuple((ixToSym[ix], Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1))) for ix in 1:6)
+chains4 = NamedTuple((ixToSym[ix], Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1))) for ix in 7:18)
+chains = merge(chains1, chains4)
+chains0 = collect(chains)
+
+discretization = PhysicsInformedNN(chains0, strategy)
+prob = discretize(pdesystem, discretization)
+sym_prob = symbolic_discretize(pdesystem, discretization)
+pde_inner_loss_functions = sym_prob.loss_functions.pde_loss_functions
+# bcs_inner_loss_functions = sym_prob.loss_functions.bc_loss_functions
+
 function run(maxsols::Int = 1; ϵ::Float64 = 1e-4, maxiters::Int = 1, fp::String = "solution") 
-    strategy = QuasiRandomTraining(1000)
-    input_ = length(domain)
-    n = 16
+    # if CUDA.functional()
+    #     synchronize()
+    # end
 
-    chains1 = NamedTuple((ixToSym[ix], Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1))) for ix in 1:6)
-    chains4 = NamedTuple((ixToSym[ix], Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1))) for ix in 7:18)
-    chains = merge(chains1, chains4)
-    chains0 = collect(chains)
-
-
-    callback(ϵ::Float64, fp::String) = function(p, l)
-        println("fp: ", fp)
-        println("loss: ", l)
-        # println("pde_losses: ", map(l_ -> l_(p), pde_inner_loss_functions))
-        # println("bcs_losses: ", map(l_ -> l_(p), bcs_inner_loss_functions))
-        return l < ϵ
-    end
-
-    solutions = Vector{ComponentVector}(undef, maxsols)
-    if CUDA.functional()
-        synchronize()
-    end
-
-    @sync for i in 1:maxsols
-        @async begin
+    # solutions = SharedArray{ComponentVector}(maxsols)
+    @distributed for i in 1:maxsols
+        begin
             ps = map(c -> Lux.setup(Random.default_rng(), c)[1], chains) |> ComponentArray .|> Float64 |> gpu
-            discretization = PhysicsInformedNN(chains0, strategy, init_params=ps)
-            prob = discretize(pdesystem, discretization)
-            sym_prob = symbolic_discretize(pdesystem, discretization)
-            pde_inner_loss_functions = sym_prob.loss_functions.pde_loss_functions
-            # bcs_inner_loss_functions = sym_prob.loss_functions.bc_loss_functions
-            sol = Optimization.solve(prob, Adam(0.01); callback=callback(ϵ, fp * "$i"), maxiters = maxiters)
+            prob1 = remake(prob; u0 = ComponentVector(depvar = ps))
+
+            callback(ϵ::Float64, i::Int) = function(p, l)
+                println("sol: ", i)
+                println("loss: ", l)
+                println("pde_losses: ", map(l_ -> l_(p), pde_inner_loss_functions))
+                # println("bcs_losses: ", map(l_ -> l_(p), bcs_inner_loss_functions))
+                return l < ϵ
+            end
+            sol = Optimization.solve(prob1, Adam(0.01); callback=callback(ϵ, i), maxiters = maxiters)
             depvar = sol.u.depvar |> cpu
-            JLD2.save_object(fp * "$i.jld2", depvar)
-            solutions[i] = depvar
-            # energy = E(ρ(depvars, sym_prob))
-            # println("energy of $fp": "$energy")
-            nothing
+            JLD2.save_object("sol$i.jld2", depvar)
+            # solutions[i] = depvar
         end
     end
 
-    return solutions
+    # return solutions
 end
 
 function solToCoordFunction(sol::ComponentVector, sym_prob, sym::Symbol)

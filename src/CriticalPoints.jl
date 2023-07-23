@@ -113,14 +113,21 @@ A(ρ) = [
 
 # integrate over the full torus with the standard volume element.
 # f needs to have the signature T^4 -> Parameters -> Real.
-function ∫_M(f)
-    prob = IntegralProblem{false}(f, zeros(4), ones(4))
+function I_M(f)
+    prob = IntegralProblem{false}((xs, p) -> f(xs), zeros(4), ones(4))
     sol = solve(prob, HCubatureJL(); reltol=1e-3, abstol=1e-3)
     sol.u
 end
 
+∫_M = Symbolics.Integral((x0,x1,x2,x3) in DomainSets.UnitInterval()^4)
 # energy
-E(ρ) = ∫_M((xs, _) -> (K(ρ(xs))[1]^2 + K(ρ(xs))[2]^2 + K(ρ(xs))[3]^2) * u(ρ(xs)))
+fₑ(ρ) = (K(ρ)[1]^2 + K(ρ)[2]^2 + K(ρ)[3]^2) * u(ρ)
+E(ρ::Vector{Num}) = ∫_M(fₑ(ρ))
+E(ρ::Function) = I_M(fₑ ∘ ρ)
+
+volMᵨ(ρ::Vector{Num}) = ∫_M(u(ρ))
+volMᵨ(ρ::Function) = I_M(u ∘ ρ)
+
 
 # The gradient vector field. At a cricitical point, this vanishes. In particular,
 # there is no need to take the exterior derivative to search for a critical point.
@@ -155,22 +162,27 @@ eqEnergy(ρ) = [
 
 eqNonVanishing(X, ϵₓ) = norm(X, 1) ≳ ϵₓ
 
-eqs = vcat(
-    eqClosed([ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)]),
-    eqNonDegenerate([ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)], 0.1),
-    eqHamilton([ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)],
-        [X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)], K₁),
-    eqHamilton([ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)],
-        [X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)], K₂),
-    eqHamilton([ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)],
-        [X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)], K₃),
-    eqCritPoint([[X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)],
-        [X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)],
-        [X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)]]),
-    eqNonVanishing([X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)], 1.0),
-    eqNonVanishing([X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)], 1.0),
-    eqNonVanishing([X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)], 1.0),
-)
+eqA2ofM(ρ) = [
+    volMᵨ(ρ) ~ volM
+]
+
+eqs = 
+    let ρ = [ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)], X₁ = [X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)], X₂ = [X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)], X₃ = [X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)]
+
+        vcat(
+            eqClosed(ρ),
+            eqNonDegenerate(ρ, 0.2),
+            eqHamilton(ρ,X₁,K₁),
+            eqHamilton(ρ,X₂,K₂),
+            eqHamilton(ρ,X₃,K₃),
+            eqCritPoint([X₁,X₂,X₃]),
+            eqEnergy(ρ),
+            eqA2ofM(ρ),
+            # eqNonVanishing([X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)], 1.0),
+            # eqNonVanishing([X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)], 1.0),
+            # eqNonVanishing([X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)], 1.0),
+            )
+    end
 
 # periodic boundary conditions for the 4-torus
 bcs = [

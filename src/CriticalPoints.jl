@@ -155,15 +155,23 @@ eqHamilton(ρ, X, F) = ι(X)(ρ)[:] .~ d₀(F(ρ))[:]
 # equations for ΣJᵢXᵢ = 0.
 eqCritPoint(X) = ΣJᵢXᵢ(X)[:] .~ 0
 
-# equations for higher energy.
-eqEnergy(ρ) = [
-    E(ρ) ≳ 2 * volM + 1
-]
-
 eqNonVanishing(X, ϵₓ) = norm(X, 1) ≳ ϵₓ
 
+# integral equations.
+# NOTE: We only impose conditions on the integrand function instead of the whole
+# integral. This will be translated to a stochastic mean via the optimization
+# strategy and should be a fair heuristic.
+
+# equations for higher energy.
+eqEnergy(ρ) = [
+    fₑ(ρ) ≳ 2 * volM + 10
+]
+
+# cohomology constraint.
+# NOTE: This isn't a constrain on the actual cohomology class but on the scaling
+# of it.
 eqA2ofM(ρ) = [
-    volMᵨ(ρ) ~ volM
+    u(ρ) ~ volM
 ]
 
 eqs = 
@@ -171,7 +179,8 @@ eqs =
 
         vcat(
             eqClosed(ρ),
-            eqNonDegenerate(ρ, 0.2),
+            # superseded by eqA2ofM
+            # eqNonDegenerate(ρ, 0.2),
             eqHamilton(ρ,X₁,K₁),
             eqHamilton(ρ,X₂,K₂),
             eqHamilton(ρ,X₃,K₃),
@@ -263,7 +272,7 @@ function run(;ϵ::Float64 = 2e-4, maxiters::Int = 1, fp::String = "solution")
         println("loss: ", l)
         println("pde_losses: ", map(l_ -> l_(p), pde_inner_loss_functions))
         # println("bcs_losses: ", map(l_ -> l_(p), bcs_inner_loss_functions))
-        return l < ϵ
+        return l < ϵ && !(l > 10e4)
     end
     sol = Optimization.solve(prob1, Adam(0.01); callback=callback(ϵ), maxiters = maxiters)
     depvar = sol.u.depvar |> cpu

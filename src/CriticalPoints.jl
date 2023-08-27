@@ -1,3 +1,4 @@
+using Distributed: launch_additional
 using NeuralPDE: DomainSets
 using NeuralPDE, Lux, CUDA, Random, ComponentArrays, Optimization, OptimizationOptimisers, Integrals
 using LinearAlgebra
@@ -119,7 +120,7 @@ function I_M(f)
     sol.u
 end
 
-∫_M = Symbolics.Integral((x0,x1,x2,x3) in DomainSets.UnitInterval()^4)
+∫_M = Symbolics.Integral((x0, x1, x2, x3) in DomainSets.UnitInterval()^4)
 # energy
 fₑ(ρ) = (K(ρ)[1]^2 + K(ρ)[2]^2 + K(ρ)[3]^2) * u(ρ)
 E(ρ::Vector{Num}) = ∫_M(fₑ(ρ))
@@ -155,33 +156,22 @@ eqHamilton(ρ, X, F) = ι(X)(ρ)[:] .~ d₀(F(ρ))[:]
 # equations for ΣJᵢXᵢ = 0.
 eqCritPoint(X) = ΣJᵢXᵢ(X)[:] .~ 0
 
-# equations for higher energy.
-eqEnergy(ρ) = [
-    E(ρ) ≳ 2 * volM + 1
-]
+energies =
+    let ρ = [ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)]
+        [fₑ(ρ)]
+    end
 
-eqNonVanishing(X, ϵₓ) = norm(X, 1) ≳ ϵₓ
-
-eqA2ofM(ρ) = [
-    volMᵨ(ρ) ~ volM
-]
-
-eqs = 
+eqs =
     let ρ = [ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)], X₁ = [X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)], X₂ = [X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)], X₃ = [X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)]
 
         vcat(
             eqClosed(ρ),
-            eqNonDegenerate(ρ, 0.2),
-            eqHamilton(ρ,X₁,K₁),
-            eqHamilton(ρ,X₂,K₂),
-            eqHamilton(ρ,X₃,K₃),
-            eqCritPoint([X₁,X₂,X₃]),
-            eqEnergy(ρ),
-            eqA2ofM(ρ),
-            # eqNonVanishing([X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)], 1.0),
-            # eqNonVanishing([X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)], 1.0),
-            # eqNonVanishing([X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)], 1.0),
-            )
+            # eqNonDegenerate(ρ, 0.2),
+            eqHamilton(ρ, X₁, K₁),
+            eqHamilton(ρ, X₂, K₂),
+            eqHamilton(ρ, X₃, K₃),
+            eqCritPoint([X₁, X₂, X₃]),
+        )
     end
 
 # periodic boundary conditions for the 4-torus
@@ -248,24 +238,24 @@ chains4 = NamedTuple((ixToSym[ix], Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, 
 chains = merge(chains1, chains4)
 chains0 = collect(chains)
 
-discretization = PhysicsInformedNN(chains0, strategy)
+discretization = PhysicsInformedNN(chains0, strategy; additional_symb_loss=energies, adaptive_loss=NonAdaptiveLoss(; pde_loss_weights=1, asl_loss_weights=-1, bc_loss_weights=1, additional_loss_weights=1))
 prob = discretize(pdesystem, discretization)
 sym_prob = symbolic_discretize(pdesystem, discretization)
 pde_inner_loss_functions = sym_prob.loss_functions.pde_loss_functions
 # bcs_inner_loss_functions = sym_prob.loss_functions.bc_loss_functions
 
 # run on one process. use @everywhere run(...)
-function run(;ϵ::Float64 = 2e-4, maxiters::Int = 1, fp::String = "solution") 
+function run(; ϵ::Float64=2e-4, maxiters::Int=1, fp::String="solution")
     ps = map(c -> Lux.setup(Random.default_rng(), c)[1], chains) |> ComponentArray .|> Float64 |> gpu
-    prob1 = remake(prob; u0 = ComponentVector(depvar = ps))
+    prob1 = remake(prob; u0=ComponentVector(depvar=ps))
 
-    callback(ϵ::Float64) = function(p, l)
+    callback(ϵ::Float64) = function (p, l)
         println("loss: ", l)
         println("pde_losses: ", map(l_ -> l_(p), pde_inner_loss_functions))
         # println("bcs_losses: ", map(l_ -> l_(p), bcs_inner_loss_functions))
-        return l < ϵ
+        return l < ϵ || (l > 10e4)
     end
-    sol = Optimization.solve(prob1, Adam(0.01); callback=callback(ϵ), maxiters = maxiters)
+    sol = Optimization.solve(prob1, Adam(0.01); callback=callback(ϵ), maxiters=maxiters)
     depvar = sol.u.depvar |> cpu
     JLD2.save_object("sol$(Distributed.myid()).jld2", depvar)
 end

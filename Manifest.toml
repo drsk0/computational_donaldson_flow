@@ -2,7 +2,7 @@
 
 julia_version = "1.10.0"
 manifest_format = "2.0"
-project_hash = "f44d820ea3277d7c41491ff25b871521330431f7"
+project_hash = "2a0b744fda8ff8f415247f06324fc6e0118abdd3"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "41c37aa88889c171f1300ceac1313c06e891d245"
@@ -243,6 +243,12 @@ deps = ["Artifacts", "CUDA_Driver_jll", "JLLWrappers", "LazyArtifacts", "Libdl",
 git-tree-sha1 = "5248d9c45712e51e27ba9b30eebec65658c6ce29"
 uuid = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
 version = "0.6.0+0"
+
+[[deps.CUDNN_jll]]
+deps = ["Artifacts", "CUDA_Runtime_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
+git-tree-sha1 = "75923dce4275ead3799b238e10178a68c07dbd3b"
+uuid = "62b44479-cb7b-5706-934f-f13b2eb2e645"
+version = "8.9.4+0"
 
 [[deps.Calculus]]
 deps = ["LinearAlgebra"]
@@ -1256,6 +1262,12 @@ version = "0.5.14"
     ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
     Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
     Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
+
+[[deps.LuxCUDA]]
+deps = ["CUDA", "Reexport", "cuDNN"]
+git-tree-sha1 = "69ac44bde022228c11fc8edde18c589f42643e27"
+uuid = "d0bbae9a-e099-4d5b-a835-1c6931763bda"
+version = "0.3.1"
 
 [[deps.LuxCore]]
 deps = ["Functors", "Random", "Setfield"]
@@ -2415,6 +2427,12 @@ deps = ["ChainRulesCore", "MacroTools"]
 git-tree-sha1 = "27798139afc0a2afa7b1824c206d5e87ea587a00"
 uuid = "700de1a5-db45-46bc-99cf-38207098b444"
 version = "0.2.5"
+
+[[deps.cuDNN]]
+deps = ["CEnum", "CUDA", "CUDNN_jll"]
+git-tree-sha1 = "5a1ba43303c62f4a09b0d6751422de03424ab0cd"
+uuid = "02a925ec-e4fe-4b08-9a7e-0d78e3d38ccd"
+version = "1.1.1"
 
 [[deps.fzf_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]

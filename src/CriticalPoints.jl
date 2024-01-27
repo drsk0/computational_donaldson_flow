@@ -1,6 +1,6 @@
 using Distributed: launch_additional
 using NeuralPDE: DomainSets
-using NeuralPDE, Lux, CUDA, Random, ComponentArrays, Optimization, OptimizationOptimisers, Integrals
+using NeuralPDE, Lux, LuxCUDA, CUDA, Random, ComponentArrays, Optimization, OptimizationOptimisers, Integrals
 using LinearAlgebra
 using Distributed
 using SharedArrays
@@ -251,9 +251,10 @@ function run(; ϵ::Float64=2e-4, maxiters::Int=1, fp::String="solution")
 
     callback(ϵ::Float64) = function (p, l)
         println("loss: ", l)
-        println("pde_losses: ", map(l_ -> l_(p), pde_inner_loss_functions))
+        pde_losses = map(l_ -> l_(p), pde_inner_loss_functions)
+        println("pde_losses: ", pde_losses)
         # println("bcs_losses: ", map(l_ -> l_(p), bcs_inner_loss_functions))
-        return l < ϵ || (l > 10e4)
+        return sum(pde_losses) < ϵ || (l > 10e4)
     end
     sol = Optimization.solve(prob1, Adam(0.01); callback=callback(ϵ), maxiters=maxiters)
     depvar = sol.u.depvar |> cpu

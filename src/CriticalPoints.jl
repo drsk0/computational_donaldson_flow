@@ -166,7 +166,6 @@ eqs =
 
         vcat(
             eqClosed(ρ),
-            # eqNonDegenerate(ρ, 0.2),
             eqHamilton(ρ, X₁, K₁),
             eqHamilton(ρ, X₂, K₂),
             eqHamilton(ρ, X₃, K₃),
@@ -230,7 +229,7 @@ ixToSym = Dict(
         X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)]
 )
 
-strategy = QuasiRandomTraining(1000)
+strategy = QuadratureTraining() #QuasiRandomTraining(1000)
 input_ = length(domain)
 n = 16
 chains1 = NamedTuple((ixToSym[ix], Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, n, Lux.σ), Dense(n, 1))) for ix in 1:6)
@@ -247,7 +246,7 @@ pde_inner_loss_functions = sym_prob.loss_functions.pde_loss_functions
 
 # run on one process. use @everywhere run(...)
 function run(; ϵ::Float64=2e-4, maxiters::Int=1, fp::String="solution")
-    ps = map(c -> Lux.setup(Random.default_rng(), c)[1], chains) |> ComponentArray .|> Float64 |> gpu
+    ps = map(c -> Lux.setup(Random.default_rng(), c)[1], chains) |> ComponentArray .|> Float64 # |> gpu
     prob1 = remake(prob; u0=ComponentVector(depvar=ps))
 
     callback(ϵ::Float64) = function (p, l)

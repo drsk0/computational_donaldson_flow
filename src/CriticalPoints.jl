@@ -238,7 +238,8 @@ chains4 = NamedTuple((ixToSym[ix], Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, 
 chains = merge(chains1, chains4)
 chains0 = collect(chains)
 
-discretization = PhysicsInformedNN(chains0, strategy; additional_symb_loss=energies, adaptive_loss=NonAdaptiveLoss(; pde_loss_weights=1, asl_loss_weights=-1, bc_loss_weights=1, additional_loss_weights=1))
+# discretization = PhysicsInformedNN(chains0, strategy; additional_symb_loss=energies, adaptive_loss=NonAdaptiveLoss(; pde_loss_weights=1, asl_loss_weights=1, bc_loss_weights=1, additional_loss_weights=1))
+discretization = PhysicsInformedNN(chains0, strategy; additional_symb_loss=energies)
 prob = discretize(pdesystem, discretization)
 sym_prob = symbolic_discretize(pdesystem, discretization)
 pde_inner_loss_functions = sym_prob.loss_functions.pde_loss_functions

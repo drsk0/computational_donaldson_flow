@@ -238,7 +238,7 @@ chains4 = NamedTuple((ixToSym[ix], Lux.Chain(Dense(input_, n, Lux.σ), Dense(n, 
 chains = merge(chains1, chains4)
 chains0 = collect(chains)
 
-# discretization = PhysicsInformedNN(chains0, strategy; additional_symb_loss=energies, adaptive_loss=NonAdaptiveLoss(; pde_loss_weights=1, asl_loss_weights=1, bc_loss_weights=1, additional_loss_weights=1))
+# discretization = PhysicsInformedNN(chains0, strategy; additional_symb_loss=energies, adaptive_loss=NonAdaptiveLoss(; pde_loss_weights=1, asl_loss_weights=-1, bc_loss_weights=1, additional_loss_weights=1))
 discretization = PhysicsInformedNN(chains0, strategy; additional_symb_loss=energies)
 prob = discretize(pdesystem, discretization)
 sym_prob = symbolic_discretize(pdesystem, discretization)
@@ -248,7 +248,7 @@ asl_inner_loss_functions = sym_prob.loss_functions.asl_loss_functions
 
 
 # run on one process. use @everywhere run(...)
-function run(; ϵ::Float64=2e-4, maxiters::Int=1, fp::String="solution")
+function runCP(; ϵ::Float64=2e-4, maxiters::Int=1, fp::String="solution")
     ps = map(c -> Lux.setup(Random.default_rng(), c)[1], chains) |> ComponentArray .|> Float64 # |> gpu
     prob1 = remake(prob; u0=ComponentVector(depvar=ps))
 

@@ -115,7 +115,8 @@ A(ρ) = [
 # integrate over the full torus with the standard volume element.
 # f needs to have the signature T^4 -> Parameters -> Real.
 function I_M(f)
-    prob = IntegralProblem{false}((xs, p) -> f(xs), zeros(4), ones(4))
+    h = IntegralFunction((xs, p) -> f(xs))
+    prob = IntegralProblem{false}(f=h, domain=(zeros(4), ones(4)))
     sol = solve(prob, HCubatureJL(); reltol=1e-3, abstol=1e-3)
     sol.u
 end
@@ -242,7 +243,9 @@ discretization = PhysicsInformedNN(chains0, strategy; additional_symb_loss=energ
 prob = discretize(pdesystem, discretization)
 sym_prob = symbolic_discretize(pdesystem, discretization)
 pde_inner_loss_functions = sym_prob.loss_functions.pde_loss_functions
-# bcs_inner_loss_functions = sym_prob.loss_functions.bc_loss_functions
+bcs_inner_loss_functions = sym_prob.loss_functions.bc_loss_functions
+asl_inner_loss_functions = sym_prob.loss_functions.asl_loss_functions
+
 
 # run on one process. use @everywhere run(...)
 function run(; ϵ::Float64=2e-4, maxiters::Int=1, fp::String="solution")
@@ -253,7 +256,8 @@ function run(; ϵ::Float64=2e-4, maxiters::Int=1, fp::String="solution")
         println("loss: ", l)
         pde_losses = map(l_ -> l_(p), pde_inner_loss_functions)
         println("pde_losses: ", pde_losses)
-        # println("bcs_losses: ", map(l_ -> l_(p), bcs_inner_loss_functions))
+        println("bcs_losses: ", map(l_ -> l_(p), bcs_inner_loss_functions))
+        println("asl_losses: ", map(l_ -> l_(p), asl_inner_loss_functions))
         return sum(pde_losses) < ϵ || (l > 10e4)
     end
     sol = Optimization.solve(prob1, Adam(0.01); callback=callback(ϵ), maxiters=maxiters)

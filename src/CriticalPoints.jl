@@ -135,6 +135,9 @@ volMᵨ(ρ::Function) = I_M(u ∘ ρ)
 # there is no need to take the exterior derivative to search for a critical point.
 ΣJᵢXᵢ(X) = sum([J₁ * X[1], J₂ * X[2], J₃ * X[3]])
 
+# An energy density inverse proportional to the L2-norm square of X.
+fₓ(X) = 1 / (norm(X[1])^2 + norm(X[2])^2 + norm(X[3])^2)
+
 # gradient operator
 gradE(ρ, X) = d₁(A(ρ) * ΣJᵢXᵢ(X))
 
@@ -158,8 +161,8 @@ eqHamilton(ρ, X, F) = ι(X)(ρ)[:] .~ d₀(F(ρ))[:]
 eqCritPoint(X) = ΣJᵢXᵢ(X)[:] .~ 0
 
 energies =
-    let ρ = [ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)]
-        [fₑ(ρ)]
+    let ρ = [ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)], X₁ = [X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)], X₂ = [X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)], X₃ = [X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)]
+        [fₑ(ρ), fₓ([X₁, X₂, X₃])]
     end
 
 eqs =

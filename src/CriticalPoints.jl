@@ -1,6 +1,7 @@
 using Distributed: launch_additional
 using NeuralPDE: DomainSets
-using NeuralPDE, Lux, LuxCUDA, CUDA, Random, ComponentArrays, Optimization, OptimizationOptimisers, Integrals
+using NeuralPDE, Lux, Random, ComponentArrays, Optimization, OptimizationOptimisers, Integrals
+# using LuxCUDA, CUDA
 using LinearAlgebra
 using Distributed
 using SharedArrays
@@ -136,7 +137,7 @@ volMᵨ(ρ::Function) = I_M(u ∘ ρ)
 ΣJᵢXᵢ(X) = sum([J₁ * X[1], J₂ * X[2], J₃ * X[3]])
 
 # An energy density inverse proportional to the L2-norm square of X.
-fₓ(X) = 1 / (norm(X[1])^2 + norm(X[2])^2 + norm(X[3])^2)
+fₓ(X) = 1 / (norm(X[1])^4 + norm(X[2])^4 + norm(X[3])^4)
 
 # gradient operator
 gradE(ρ, X) = d₁(A(ρ) * ΣJᵢXᵢ(X))
@@ -162,7 +163,8 @@ eqCritPoint(X) = ΣJᵢXᵢ(X)[:] .~ 0
 
 energies =
     let ρ = [ρ01(x0, x1, x2, x3), ρ02(x0, x1, x2, x3), ρ03(x0, x1, x2, x3), ρ12(x0, x1, x2, x3), ρ13(x0, x1, x2, x3), ρ23(x0, x1, x2, x3)], X₁ = [X11(x0, x1, x2, x3), X12(x0, x1, x2, x3), X13(x0, x1, x2, x3), X14(x0, x1, x2, x3)], X₂ = [X21(x0, x1, x2, x3), X22(x0, x1, x2, x3), X23(x0, x1, x2, x3), X24(x0, x1, x2, x3)], X₃ = [X31(x0, x1, x2, x3), X32(x0, x1, x2, x3), X33(x0, x1, x2, x3), X34(x0, x1, x2, x3)]
-        [fₑ(ρ), fₓ([X₁, X₂, X₃])]
+        # [fₑ(ρ), fₓ([X₁, X₂, X₃])]
+        [1/u(ρ), fₓ([X₁, X₂, X₃])]
     end
 
 eqs =
